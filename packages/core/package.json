@@ -14,6 +14,11 @@
     "@openlumo/db": "workspace:*",
     "@openlumo/providers": "workspace:*",
     "drizzle-orm": "0.45.4",
+    "pg": "8.23.1",
+    "pg-boss": "12.38.0",
     "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
   }
 }

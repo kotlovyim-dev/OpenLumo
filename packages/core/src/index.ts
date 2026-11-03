@@ -4,3 +4,8 @@ export * from './secrets/secret-store';
 export * from './models/model-settings';
 export * from './models/registry';
 export * from './assets/asset-storage';
+export * from './jobs/job-names';
+export * from './jobs/job-payloads';
+export * from './jobs/queue';
+export * from './jobs/define-job';
+export * from './jobs/job-events';
