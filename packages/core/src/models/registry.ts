@@ -68,13 +68,7 @@ async function requireModelId(db: Database, capability: ModelCapability): Promis
 
 export async function verifyApiKey(apiKey: string, config: Config): Promise<boolean> {
   if (config.testProviders === 'fake') return apiKey.length > 0;
-  try {
-    await createOpenRouter(apiKey).listModels();
-    return true;
-  } catch (error) {
-    if (error instanceof ProviderError && error.code === 'unauthorized') return false;
-    throw error;
-  }
+  return createOpenRouter(apiKey).verifyKey();
 }
 
 export async function resolveCatalog(db: Database, config: Config): Promise<ModelCatalog> {
