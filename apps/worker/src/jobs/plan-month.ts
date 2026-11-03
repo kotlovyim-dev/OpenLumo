@@ -17,6 +17,21 @@ export function createPlanMonthJob({ db, config }: WorkerDependencies) {
   return defineJob('plan.month', async ({ brandId, strategyId, from, days }, context) => {
     await context.reportProgress('Planning your content');
 
+    const planned = await db
+      .select({ id: contentItems.id, status: contentItems.status, currentVersionId: contentItems.currentVersionId })
+      .from(contentItems)
+      .where(eq(contentItems.strategyId, strategyId));
+    if (planned.length > 0) {
+      for (const item of planned.filter((item) => item.status === 'suggested' && !item.currentVersionId)) {
+        await context.enqueue(
+          'item.generate',
+          { brandId, itemId: item.id, targetVersion: 1 },
+          { idempotencyKey: `generate:${item.id}:1` },
+        );
+      }
+      return;
+    }
+
     const saved = await getBrandDna(db, brandId);
     if (!saved) throw new BrandNotReadyError(brandId);
     const [strategy] = await db.select().from(strategies).where(eq(strategies.id, strategyId));

@@ -120,6 +120,38 @@ describe('planner jobs', () => {
     );
   });
 
+  it('plan.month on a strategy that already has items only requeues generation for suggested items without a version', async () => {
+    enqueued.length = 0;
+    const brand = await readyBrand();
+    const strategy = await strategyFor(brand.id);
+    const scheduledAt = new Date(Date.now() + DAY_MS);
+    const created = await db
+      .insert(contentItems)
+      .values(
+        [0, 1].map(() => ({
+          brandId: brand.id,
+          strategyId: strategy.id,
+          channel: 'x' as const,
+          format: 'social_post' as const,
+          status: 'suggested' as const,
+          scheduledAt,
+        })),
+      )
+      .returning({ id: contentItems.id });
+
+    await createPlanMonthJob(deps()).run(
+      { brandId: brand.id, strategyId: strategy.id, from: new Date().toISOString(), days: 30 },
+      context,
+    );
+
+    const items = await db.select().from(contentItems).where(eq(contentItems.brandId, brand.id));
+    expect(items).toHaveLength(2);
+    expect(enqueued.map((call) => call.name)).toEqual(['item.generate', 'item.generate']);
+    expect(enqueued.map((call) => call.options?.idempotencyKey).sort()).toEqual(
+      created.map((item) => `generate:${item.id}:1`).sort(),
+    );
+  });
+
   it('strategy.create fails non-retryably with brand_not_ready when there is no DNA', async () => {
     const brand = await createBrand(db, { name: 'Empty', createdBy: 'u1' });
     await expect(
