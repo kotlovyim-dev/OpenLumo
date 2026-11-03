@@ -47,6 +47,12 @@ export async function enqueue<N extends JobName>(
       .where(eq(jobRuns.idempotencyKey, options.idempotencyKey));
     if (existing) return existing.id;
   }
-  await boss.send(name, payload, { id: runId, group: { id: payload.brandId } });
+  try {
+    const jobId = await boss.send(name, payload, { id: runId, group: { id: payload.brandId } });
+    if (!jobId) throw new Error(`pg-boss did not create a job for ${name}`);
+  } catch (error) {
+    await db.delete(jobRuns).where(eq(jobRuns.id, runId));
+    throw error;
+  }
   return runId;
 }

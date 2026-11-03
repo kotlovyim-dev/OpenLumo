@@ -78,6 +78,7 @@ export async function startWorker(
       {
         localConcurrency: config.globalJobConcurrency,
         localGroupConcurrency: Math.min(config.brandJobConcurrency, config.globalJobConcurrency),
+        batchSize: 1,
         includeMetadata: true,
       },
       async ([job]) => {

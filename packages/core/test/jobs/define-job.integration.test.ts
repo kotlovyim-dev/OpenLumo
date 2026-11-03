@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import type { PgBoss } from 'pg-boss';
 import { brands, jobRuns, users, type Database } from '@openlumo/db';
@@ -34,6 +34,7 @@ describe('job runtime', { timeout: 30_000 }, () => {
     const [brand] = await db.insert(brands).values({ name: 'B', createdBy: 'u1' }).returning({ id: brands.id });
     brandId = brand!.id;
     boss = await createQueue(url, { createQueues: true });
+    await boss.updateQueue('strategy.create', { retryDelay: 1, retryBackoff: false });
     await boss.updateQueue('plan.month', { retryDelay: 1, retryBackoff: false });
     await boss.updateQueue('plan.top-up', { retryDelay: 1, retryBackoff: false });
   });
@@ -75,7 +76,7 @@ describe('job runtime', { timeout: 30_000 }, () => {
     const run = await waitForRun(db, runId, 'failed');
 
     expect(run.errorCode).toBe('unauthorized');
-    await new Promise((resolve) => setTimeout(resolve, 2500));
+    await new Promise((resolve) => setTimeout(resolve, 6000));
     expect(attempts).toBe(1);
   });
 
@@ -158,5 +159,18 @@ describe('job runtime', { timeout: 30_000 }, () => {
     expect(second).toBe(first);
     const rows = await db.select().from(jobRuns).where(eq(jobRuns.idempotencyKey, 'dna-1'));
     expect(rows).toHaveLength(1);
+  });
+
+  it('removes the run when sending fails so a retry with the same key sends', async () => {
+    const send = vi.spyOn(boss, 'send').mockRejectedValueOnce(new Error('connection lost'));
+
+    await expect(enqueue(boss, db, 'brand.crawl', { brandId }, { idempotencyKey: 'regen-1' })).rejects.toThrow('connection lost');
+    expect(await db.select().from(jobRuns).where(eq(jobRuns.idempotencyKey, 'regen-1'))).toHaveLength(0);
+
+    const runId = await enqueue(boss, db, 'brand.crawl', { brandId }, { idempotencyKey: 'regen-1' });
+    expect(send).toHaveBeenCalledTimes(2);
+    const [row] = await db.select().from(jobRuns).where(eq(jobRuns.id, runId));
+    expect(row?.idempotencyKey).toBe('regen-1');
+    send.mockRestore();
   });
 });

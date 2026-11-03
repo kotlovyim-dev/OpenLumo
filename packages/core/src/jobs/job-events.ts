@@ -25,9 +25,22 @@ export async function listenToJobEvents(
 ): Promise<() => Promise<void>> {
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
-  client.on('notification', (message) => {
-    if (message.payload) onEvent(JSON.parse(message.payload) as JobEvent);
+  client.on('error', (error) => {
+    console.error('job event listener connection lost', error);
   });
-  await client.query(`LISTEN ${channel}`);
+  client.on('notification', (message) => {
+    if (!message.payload) return;
+    try {
+      onEvent(JSON.parse(message.payload) as JobEvent);
+    } catch {
+      return;
+    }
+  });
+  try {
+    await client.query(`LISTEN ${channel}`);
+  } catch (error) {
+    await client.end();
+    throw error;
+  }
   return () => client.end();
 }
