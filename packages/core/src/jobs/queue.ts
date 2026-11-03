@@ -5,6 +5,8 @@ import { jobRuns, type Database } from '@openlumo/db';
 import { jobNames, type JobName } from './job-names';
 import type { JobPayload } from './job-payloads';
 
+export type Queue = Awaited<ReturnType<typeof createQueue>>;
+
 export type QueueOptions = ConstructorOptions & { createQueues?: boolean };
 
 export async function createQueue(databaseUrl: string, options: QueueOptions = {}): Promise<PgBoss> {

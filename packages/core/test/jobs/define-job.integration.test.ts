@@ -226,4 +226,13 @@ describe('job runtime', { timeout: 30_000 }, () => {
     expect(row?.idempotencyKey).toBe('regen-1');
     send.mockRestore();
   });
+
+  it('tracks a job sent without enqueue, such as a scheduled one', async () => {
+    await startWorker(boss, db, [defineJob('chat.reply', async () => {})], config);
+
+    const jobId = await boss.send('chat.reply', { brandId });
+    const run = await waitForRun(db, jobId!, 'succeeded');
+
+    expect(run).toMatchObject({ id: jobId, type: 'chat.reply', brandId });
+  });
 });

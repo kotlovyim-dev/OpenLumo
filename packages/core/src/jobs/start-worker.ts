@@ -1,5 +1,5 @@
 import type { PgBoss } from 'pg-boss';
-import type { Database } from '@openlumo/db';
+import { jobRuns, type Database } from '@openlumo/db';
 import type { Config } from '../config';
 import type { JobContext, JobDefinition } from './define-job';
 import { jobPayloads } from './job-payloads';
@@ -35,9 +35,21 @@ export async function startWorker(
       async ([job]) => {
         if (!job) return;
         const runId = job.id;
+        const parsed = jobPayloads[definition.name].safeParse(job.data);
+        if (parsed.success) {
+          await db
+            .insert(jobRuns)
+            .values({
+              id: runId,
+              jobId: runId,
+              brandId: parsed.data.brandId,
+              itemId: 'itemId' in parsed.data && typeof parsed.data.itemId === 'string' ? parsed.data.itemId : undefined,
+              type: definition.name,
+            })
+            .onConflictDoNothing({ target: jobRuns.id });
+        }
         await updateRun(db, runId, { status: 'running', step: null, error: null, errorCode: null });
 
-        const parsed = jobPayloads[definition.name].safeParse(job.data);
         if (!parsed.success) {
           await updateRun(db, runId, {
             status: 'failed',

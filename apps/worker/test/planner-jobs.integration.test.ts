@@ -12,6 +12,7 @@ import {
   createBrand,
   createPartialBrandDna,
   createQueue,
+  type Queue,
   loadConfig,
   saveBrandDna,
 } from '@openlumo/core';
@@ -31,7 +32,7 @@ describe('planner jobs', () => {
   let url: string;
   let storageDirectory: string;
   let config: Config;
-  let boss: Awaited<ReturnType<typeof createQueue>>;
+  let boss: Queue;
   const enqueued: Enqueued[] = [];
 
   const context: JobContext = {
