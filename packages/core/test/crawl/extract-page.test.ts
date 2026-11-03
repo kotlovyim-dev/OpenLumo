@@ -38,6 +38,15 @@ describe('extractPage', () => {
     expect(page.text).toBe('Body text NextMail');
   });
 
+  it('separates block elements with whitespace', () => {
+    expect(extractPage('<body><p>a</p><p>b</p></body>', 'https://x.test/').text).toBe('a b');
+  });
+
+  it('canonicalises index.html links', () => {
+    const links = extractPage('<a href="/index.html#x">h</a><a href="/">r</a>', 'https://x.test/').links;
+    expect(links).toEqual(['https://x.test/']);
+  });
+
   it('prefers an img with logo over icon and og:image', () => {
     expect(page.logoUrl).toBe('https://acme.test/brand.png');
   });

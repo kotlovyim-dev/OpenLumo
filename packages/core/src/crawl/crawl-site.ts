@@ -1,6 +1,7 @@
 import robotsParser from 'robots-parser';
 import { extractCssColors } from './css-colors';
 import { type ExtractedPage, extractPage } from './extract-page';
+import { normaliseUrl } from './normalise-url';
 import { safeFetch } from './safe-fetch';
 
 const USER_AGENT = 'OpenLumoBot';
@@ -20,12 +21,6 @@ async function inBatches<T, R>(items: T[], run: (item: T) => Promise<R>): Promis
     results.push(...(await Promise.all(items.slice(start, start + CONCURRENCY).map(run))));
   }
   return results;
-}
-
-function withoutHash(url: string): string {
-  const parsed = new URL(url);
-  parsed.hash = '';
-  return parsed.href;
 }
 
 async function fetchRobots(origin: string, allowPrivateHosts: boolean) {
@@ -61,8 +56,8 @@ async function fetchStylesheet(url: string, allowPrivateHosts: boolean): Promise
 async function fetchLogo(url: string, allowPrivateHosts: boolean): Promise<CrawlResult['logo']> {
   try {
     const response = await safeFetch(url, { allowPrivateHosts });
-    if (response.status !== 200) return undefined;
     const mimeType = response.contentType.split(';')[0]?.trim() ?? '';
+    if (response.status !== 200 || !mimeType.startsWith('image/')) return undefined;
     return { url: response.finalUrl, bytes: response.body, mimeType };
   } catch {
     return undefined;
@@ -71,33 +66,40 @@ async function fetchLogo(url: string, allowPrivateHosts: boolean): Promise<Crawl
 
 export async function crawlSite(startUrl: string, options: CrawlOptions): Promise<CrawlResult> {
   const { allowPrivateHosts, maxPages = 10 } = options;
-  const start = withoutHash(startUrl);
-  const origin = new URL(start).origin;
+  const first = await fetchPage(startUrl, allowPrivateHosts);
+  const origin = new URL(first.url).origin;
   const robots = await fetchRobots(origin, allowPrivateHosts);
   const isAllowed = (url: string) => robots?.isAllowed(url, USER_AGENT) !== false;
 
-  if (!isAllowed(start)) throw new Error(`robots.txt disallows ${start}`);
+  if (!isAllowed(first.url)) throw new Error(`robots.txt disallows ${first.url}`);
 
-  const pages: ExtractedPage[] = [];
-  const seen = new Set([start]);
-  let queue = [start];
+  const pages: ExtractedPage[] = [first];
+  const seen = new Set([normaliseUrl(startUrl), normaliseUrl(first.url)]);
+  const crawled = new Set([normaliseUrl(first.url)]);
+  let queue: string[] = [];
+
+  const enqueueLinks = (page: ExtractedPage) => {
+    for (const link of page.links) {
+      if (new URL(link).origin === origin && !seen.has(link) && isAllowed(link)) {
+        seen.add(link);
+        queue.push(link);
+      }
+    }
+  };
+  enqueueLinks(first);
 
   while (queue.length > 0 && pages.length < maxPages) {
     const batch = queue.slice(0, Math.min(CONCURRENCY, maxPages - pages.length));
     queue = queue.slice(batch.length);
     const settled = await Promise.allSettled(batch.map((url) => fetchPage(url, allowPrivateHosts)));
     for (const result of settled) {
-      if (result.status === 'rejected') {
-        if (pages.length === 0 && seen.size === 1) throw result.reason;
-        continue;
-      }
-      pages.push(result.value);
-      for (const link of result.value.links) {
-        if (new URL(link).origin === origin && !seen.has(link) && isAllowed(link)) {
-          seen.add(link);
-          queue.push(link);
-        }
-      }
+      if (result.status === 'rejected') continue;
+      const page = result.value;
+      const finalUrl = normaliseUrl(page.url);
+      if (new URL(finalUrl).origin !== origin || crawled.has(finalUrl)) continue;
+      crawled.add(finalUrl);
+      pages.push(page);
+      enqueueLinks(page);
     }
   }
 

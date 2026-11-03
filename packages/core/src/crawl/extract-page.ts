@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import { normaliseUrl } from './normalise-url';
 
 export type ExtractedPage = {
   url: string;
@@ -13,6 +14,9 @@ export type ExtractedPage = {
   stylesheetUrls: string[];
   inlineCss: string;
 };
+
+const BLOCK_ELEMENTS =
+  'p, div, li, ul, ol, section, article, main, header, h1, h2, h3, h4, h5, h6, br, tr, td, th, blockquote';
 
 function resolveUrl(value: string | undefined, base: string): string | undefined {
   if (!value) return undefined;
@@ -42,9 +46,7 @@ export function extractPage(html: string, pageUrl: string): ExtractedPage {
       .map((_, element) => {
         const resolved = resolveUrl($(element).attr('href'), pageUrl);
         if (!resolved || !/^https?:/.test(resolved)) return undefined;
-        const url = new URL(resolved);
-        url.hash = '';
-        return url.href;
+        return normaliseUrl(resolved);
       })
       .get(),
   );
@@ -73,6 +75,7 @@ export function extractPage(html: string, pageUrl: string): ExtractedPage {
     .join('\n');
 
   $('script, style, nav, footer').remove();
+  $(BLOCK_ELEMENTS).append(' ');
 
   return {
     url: pageUrl,
