@@ -59,6 +59,7 @@ describe('crawl sources', { timeout: 30_000 }, () => {
     const loaded = await loadCrawlSources(db, brandId);
 
     expect(loaded?.palette).toEqual(['#112233', '#445566']);
+    expect(loaded?.logoAssetId).toBe(logoAssetId);
     expect(loaded?.pages.map(({ url, title, description, text, openGraph }) => ({ url, title, description, text, openGraph })))
       .toEqual(
         crawl.pages.map(({ url, title, description, text, openGraph }) => ({ url, title, description, text, openGraph })),

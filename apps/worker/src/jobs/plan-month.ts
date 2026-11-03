@@ -17,10 +17,24 @@ export function createPlanMonthJob({ db, config }: WorkerDependencies) {
   return defineJob('plan.month', async ({ brandId, strategyId, from, days }, context) => {
     await context.reportProgress('Planning your content');
 
+    const saved = await getBrandDna(db, brandId);
+    if (!saved) throw new BrandNotReadyError(brandId);
+    const [strategy] = await db.select().from(strategies).where(eq(strategies.id, strategyId));
+    if (!strategy) throw new Error(`Strategy ${strategyId} not found`);
+
+    const start = new Date(from);
+    const end = new Date(start.getTime() + days * DAY_MS);
+
     const planned = await db
       .select({ id: contentItems.id, status: contentItems.status, currentVersionId: contentItems.currentVersionId })
       .from(contentItems)
-      .where(eq(contentItems.strategyId, strategyId));
+      .where(
+        and(
+          eq(contentItems.strategyId, strategyId),
+          gte(contentItems.scheduledAt, start),
+          lt(contentItems.scheduledAt, end),
+        ),
+      );
     if (planned.length > 0) {
       for (const item of planned.filter((item) => item.status === 'suggested' && !item.currentVersionId)) {
         await context.enqueue(
@@ -31,14 +45,6 @@ export function createPlanMonthJob({ db, config }: WorkerDependencies) {
       }
       return;
     }
-
-    const saved = await getBrandDna(db, brandId);
-    if (!saved) throw new BrandNotReadyError(brandId);
-    const [strategy] = await db.select().from(strategies).where(eq(strategies.id, strategyId));
-    if (!strategy) throw new Error(`Strategy ${strategyId} not found`);
-
-    const start = new Date(from);
-    const end = new Date(start.getTime() + days * DAY_MS);
     const existing: PlannedSlot[] = (
       await db
         .select()

@@ -71,12 +71,19 @@ export async function saveCrawlSources(
   });
 }
 
-export async function loadCrawlSources(db: Database, brandId: string): Promise<CrawlResult | null> {
+export async function loadCrawlSources(
+  db: Database,
+  brandId: string,
+): Promise<(CrawlResult & { logoAssetId?: string }) | null> {
   const sources = await db
     .select()
     .from(brandSources)
     .where(and(eq(brandSources.brandId, brandId), eq(brandSources.kind, 'page')));
-  if (sources.length === 0) return null;
+  const [logo] = await db
+    .select({ id: assets.id })
+    .from(assets)
+    .where(and(eq(assets.brandId, brandId), eq(assets.kind, 'logo')));
+  if (sources.length === 0 && !logo) return null;
   const metas = sources.map((source) => {
     const parsed = pageSourceMetaSchema.safeParse(source.meta);
     return parsed.success ? parsed.data : { title: '', description: '', openGraph: {} };
@@ -93,5 +100,5 @@ export async function loadCrawlSources(db: Database, brandId: string): Promise<C
     inlineCss: '',
   }));
   const palette = metas.map((meta) => ('palette' in meta ? meta.palette : undefined)).find(Boolean) ?? [];
-  return { pages, palette };
+  return { pages, palette, ...(logo ? { logoAssetId: logo.id } : {}) };
 }

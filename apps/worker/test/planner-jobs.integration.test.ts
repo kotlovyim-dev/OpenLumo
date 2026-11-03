@@ -78,7 +78,18 @@ describe('planner jobs', () => {
   async function strategyFor(brandId: string) {
     const [strategy] = await db
       .insert(strategies)
-      .values({ brandId, goal: 'sales', channels: ['x'], document: {} })
+      .values({
+        brandId,
+        goal: 'sales',
+        channels: ['x'],
+        document: {
+          strengths: [],
+          gaps: [],
+          pillars: [],
+          cadence: [{ channel: 'x', postsPerWeek: 3 }],
+          campaignIdeas: [1, 2, 3].map((n) => ({ title: `Idea ${n}`, summary: 'Summary' })),
+        },
+      })
       .returning();
     return strategy!;
   }
@@ -150,6 +161,50 @@ describe('planner jobs', () => {
     expect(enqueued.map((call) => call.options?.idempotencyKey).sort()).toEqual(
       created.map((item) => `generate:${item.id}:1`).sort(),
     );
+  });
+
+  it('plan.month skips generation for in-window items that have a version or are not suggested', async () => {
+    enqueued.length = 0;
+    const brand = await readyBrand();
+    const strategy = await strategyFor(brand.id);
+    const scheduledAt = new Date(Date.now() + DAY_MS);
+    const base = { brandId: brand.id, strategyId: strategy.id, channel: 'x' as const, format: 'social_post' as const, scheduledAt };
+    await db.insert(contentItems).values([
+      { ...base, status: 'approved' as const },
+      { ...base, status: 'suggested' as const, currentVersionId: crypto.randomUUID() },
+    ]);
+
+    await createPlanMonthJob(deps()).run(
+      { brandId: brand.id, strategyId: strategy.id, from: new Date().toISOString(), days: 30 },
+      context,
+    );
+
+    expect(enqueued).toHaveLength(0);
+    expect(await db.select().from(contentItems).where(eq(contentItems.brandId, brand.id))).toHaveLength(2);
+  });
+
+  it('plan.month plans new items when the strategy only has items before the window', async () => {
+    enqueued.length = 0;
+    const brand = await readyBrand();
+    const strategy = await strategyFor(brand.id);
+    await db.insert(contentItems).values({
+      brandId: brand.id,
+      strategyId: strategy.id,
+      channel: 'x',
+      format: 'social_post',
+      status: 'approved',
+      scheduledAt: new Date(Date.now() - 5 * DAY_MS),
+    });
+
+    await createPlanMonthJob(deps()).run(
+      { brandId: brand.id, strategyId: strategy.id, from: new Date().toISOString(), days: 30 },
+      context,
+    );
+
+    const items = await db.select().from(contentItems).where(eq(contentItems.brandId, brand.id));
+    expect(items.length).toBeGreaterThan(1);
+    expect(enqueued).toHaveLength(items.length - 1);
+    expect(enqueued.every((call) => call.name === 'item.generate')).toBe(true);
   });
 
   it('strategy.create fails non-retryably with brand_not_ready when there is no DNA', async () => {
