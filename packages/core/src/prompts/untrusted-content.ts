@@ -3,6 +3,6 @@ export const untrustedContentRule =
 
 export function wrapUntrustedContent(label: string, content: string): string {
   const safeLabel = label.replace(/["<>]/g, '');
-  const safeContent = content.replace(/<\/\s*untrusted_content\s*>/gi, '');
+  const safeContent = content.replace(/<(?=\/\s*untrusted)/gi, '&lt;');
   return `<untrusted_content label="${safeLabel}">\n${safeContent}\n</untrusted_content>`;
 }

@@ -138,6 +138,28 @@ describe('brand jobs', () => {
     expect(saved?.dna.visuals.palette[0]).toBe('#ff5a1f');
   });
 
+  it('does not duplicate sources or synthesize runs when the same crawl run is retried', async () => {
+    const keys: Array<string | undefined> = [];
+    const retryContext: JobContext = {
+      ...context,
+      runId: 'same-run',
+      enqueue: async (_name, _payload, options) => {
+        keys.push(options?.idempotencyKey);
+        return 'queued';
+      },
+    };
+    const brand = await createBrand(db, { url: `${fixtureOrigin}/`, createdBy: 'u1' });
+    const job = createBrandCrawlJob(deps());
+    await job.run({ brandId: brand.id }, retryContext);
+    const first = await db.select().from(brandSources).where(eq(brandSources.brandId, brand.id));
+    await job.run({ brandId: brand.id }, retryContext);
+    const second = await db.select().from(brandSources).where(eq(brandSources.brandId, brand.id));
+
+    expect(second).toHaveLength(first.length);
+    expect(await db.select().from(assets).where(eq(assets.brandId, brand.id))).toHaveLength(1);
+    expect(keys).toEqual(['synthesize-dna:same-run', 'synthesize-dna:same-run']);
+  });
+
   it('saves a prefilled partial DNA and needs_input for a thin site', async () => {
     enqueued.length = 0;
     const brand = await createBrand(db, { url: `${thinOrigin}/`, createdBy: 'u1' });

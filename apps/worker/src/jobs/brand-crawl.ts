@@ -21,8 +21,11 @@ const logoExtensions: Record<string, string> = {
   'image/vnd.microsoft.icon': 'ico',
 };
 
+type Transaction = Parameters<Parameters<WorkerDependencies['db']['transaction']>[0]>[0];
+
 async function storeLogo(
-  { db, storage }: WorkerDependencies,
+  tx: Transaction,
+  storage: WorkerDependencies['storage'],
   brandId: string,
   logo: NonNullable<CrawlResult['logo']>,
 ): Promise<void> {
@@ -30,36 +33,37 @@ async function storeLogo(
   const extension = logoExtensions[logo.mimeType] ?? 'bin';
   const storageKey = `brands/${brandId}/${id}.${extension}`;
   await storage.write(storageKey, logo.bytes);
-  await db.insert(assets).values({ id, brandId, kind: 'logo', storageKey, mimeType: logo.mimeType });
+  await tx.insert(assets).values({ id, brandId, kind: 'logo', storageKey, mimeType: logo.mimeType });
 }
 
 async function storeSources(
-  deps: WorkerDependencies,
+  { db, storage }: WorkerDependencies,
   brandId: string,
   crawl: CrawlResult,
 ): Promise<void> {
-  const { db } = deps;
-  await db.delete(brandSources).where(eq(brandSources.brandId, brandId));
-  await db.delete(assets).where(eq(assets.brandId, brandId));
-  if (crawl.pages.length > 0) {
-    await db.insert(brandSources).values(
-      crawl.pages.map((page, index) => ({
-        brandId,
-        kind: 'page' as const,
-        url: page.url,
-        text: page.text,
-        meta: {
-          title: page.title,
-          description: page.description,
-          openGraph: page.openGraph,
-          ...(index === 0 ? { palette: crawl.palette } : {}),
-        },
-      })),
-    );
-  }
-  if (!crawl.logo) return;
-  await db.insert(brandSources).values({ brandId, kind: 'logo', url: crawl.logo.url });
-  await storeLogo(deps, brandId, crawl.logo);
+  await db.transaction(async (tx) => {
+    await tx.delete(brandSources).where(eq(brandSources.brandId, brandId));
+    await tx.delete(assets).where(eq(assets.brandId, brandId));
+    if (crawl.pages.length > 0) {
+      await tx.insert(brandSources).values(
+        crawl.pages.map((page, index) => ({
+          brandId,
+          kind: 'page' as const,
+          url: page.url,
+          text: page.text,
+          meta: {
+            title: page.title,
+            description: page.description,
+            openGraph: page.openGraph,
+            ...(index === 0 ? { palette: crawl.palette } : {}),
+          },
+        })),
+      );
+    }
+    if (!crawl.logo) return;
+    await tx.insert(brandSources).values({ brandId, kind: 'logo', url: crawl.logo.url });
+    await storeLogo(tx, storage, brandId, crawl.logo);
+  });
 }
 
 export function createBrandCrawlJob(deps: WorkerDependencies) {
@@ -72,7 +76,10 @@ export function createBrandCrawlJob(deps: WorkerDependencies) {
       if (!brand?.url) throw new Error(`Brand ${brandId} has no URL to crawl`);
 
       const crawl = await crawlSite(brand.url, { allowPrivateHosts: config.allowPrivateHosts }).catch(
-        (): CrawlResult => ({ pages: [], palette: [] }),
+        (error): CrawlResult => {
+          console.error(`Crawl of ${brand.url} failed`, error);
+          return { pages: [], palette: [] };
+        },
       );
       await storeSources(deps, brandId, crawl);
 
@@ -82,7 +89,11 @@ export function createBrandCrawlJob(deps: WorkerDependencies) {
         return;
       }
 
-      await context.enqueue('brand.synthesize-dna', { brandId });
+      await context.enqueue(
+        'brand.synthesize-dna',
+        { brandId },
+        { idempotencyKey: `synthesize-dna:${context.runId}` },
+      );
     },
     { onFailed: ({ brandId }) => fallBackToManualInput(db, brandId) },
   );

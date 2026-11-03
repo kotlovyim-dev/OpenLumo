@@ -3,6 +3,8 @@ import type { CrawlResult } from '../crawl/crawl-site';
 import { untrustedContentRule, wrapUntrustedContent } from '../prompts/untrusted-content';
 
 const PAGE_TEXT_LIMIT = 3000;
+const PAGE_META_LIMIT = 300;
+const TOTAL_PAGES_LIMIT = 20000;
 
 const systemPrompt = [
   'You are a brand strategist. Read the pages of a business website and describe its brand as a structured Brand DNA object.',
@@ -11,12 +13,21 @@ const systemPrompt = [
 ].join('\n');
 
 export function buildBrandDnaMessages(crawl: CrawlResult, feedback: string[]): Message[] {
-  const sections = crawl.pages.map((page) =>
-    wrapUntrustedContent(
+  const sections: string[] = [];
+  let used = 0;
+  for (const page of crawl.pages) {
+    const section = wrapUntrustedContent(
       `page ${page.url}`,
-      [`Title: ${page.title}`, `Description: ${page.description}`, page.text.slice(0, PAGE_TEXT_LIMIT)].join('\n'),
-    ),
-  );
+      [
+        `Title: ${page.title.slice(0, PAGE_META_LIMIT)}`,
+        `Description: ${page.description.slice(0, PAGE_META_LIMIT)}`,
+        page.text.slice(0, PAGE_TEXT_LIMIT),
+      ].join('\n'),
+    );
+    if (used + section.length > TOTAL_PAGES_LIMIT) break;
+    sections.push(section);
+    used += section.length;
+  }
   if (crawl.palette.length > 0) sections.push(`Colours found in the site CSS: ${crawl.palette.join(', ')}`);
   if (feedback.length > 0) {
     sections.push(`Feedback from the brand owner to respect:\n${feedback.map((note) => `- ${note}`).join('\n')}`);
