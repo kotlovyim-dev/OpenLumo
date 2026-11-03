@@ -203,6 +203,9 @@ importers:
         specifier: 0.45.4
         version: 0.45.4(@opentelemetry/api@1.10.0)(@types/pg@8.23.1)(pg@8.23.1)
     devDependencies:
+      '@openlumo/providers':
+        specifier: workspace:*
+        version: link:../../packages/providers
       tsx:
         specifier: 4.23.15
         version: 4.23.15

@@ -37,6 +37,7 @@ describe('job runtime', { timeout: 30_000 }, () => {
     boss = await createQueue(url, { createQueues: true });
     await boss.updateQueue('strategy.create', { retryDelay: 1, retryBackoff: false });
     await boss.updateQueue('plan.month', { retryDelay: 1, retryBackoff: false });
+    await boss.updateQueue('export.bundle', { retryDelay: 1, retryBackoff: false });
     await boss.updateQueue('plan.top-up', { retryDelay: 1, retryBackoff: false });
   });
 
@@ -121,6 +122,52 @@ describe('job runtime', { timeout: 30_000 }, () => {
 
     expect(attempts).toBe(3);
     expect(run.errorCode).toBe('rate_limited');
+  });
+
+  it('calls onFailed once for a non-retryable failure and only after the last retry otherwise', async () => {
+    const failures: Array<{ name: string; code: string }> = [];
+    let attempts = 0;
+    await startWorker(
+      boss,
+      db,
+      [
+        defineJob(
+          'brand.synthesize-dna',
+          async () => {
+            throw new ProviderError('unauthorized');
+          },
+          { onFailed: async (_payload, error) => void failures.push({ name: 'fatal', code: error.code }) },
+        ),
+        defineJob(
+          'export.bundle',
+          async () => {
+            attempts += 1;
+            throw new ProviderError('rate_limited');
+          },
+          {
+            onFailed: async (_payload, error) => {
+              failures.push({ name: 'retried', code: error.code });
+              expect(attempts).toBe(3);
+              throw new Error('hook failure is swallowed');
+            },
+          },
+        ),
+      ],
+      config,
+    );
+
+    const fatalRun = await enqueue(boss, db, 'brand.synthesize-dna', { brandId });
+    await waitForRun(db, fatalRun, 'failed');
+    const retriedRun = await enqueue(boss, db, 'export.bundle', { brandId });
+    const run = await waitForRun(db, retriedRun, 'failed');
+
+    expect(run.errorCode).toBe('rate_limited');
+    await expect
+      .poll(() => failures)
+      .toEqual([
+        { name: 'fatal', code: 'unauthorized' },
+        { name: 'retried', code: 'rate_limited' },
+      ]);
   });
 
   it('accumulates recorded usage into cost_usd', async () => {

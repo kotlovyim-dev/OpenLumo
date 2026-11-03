@@ -7,6 +7,7 @@ import {
   synthesizeBrandDna,
 } from '@openlumo/core';
 import { assets, brandSources, brands } from '@openlumo/db';
+import { fallBackToManualInput } from './brand-fallback';
 import type { WorkerDependencies } from '../worker-dependencies';
 
 type PageMeta = {
@@ -17,7 +18,9 @@ type PageMeta = {
 };
 
 export function createBrandSynthesizeDnaJob({ db, config }: WorkerDependencies) {
-  return defineJob('brand.synthesize-dna', async ({ brandId }, context) => {
+  return defineJob(
+    'brand.synthesize-dna',
+    async ({ brandId }, context) => {
     await context.reportProgress('Learning your brand');
 
     const sources = await db
@@ -51,5 +54,7 @@ export function createBrandSynthesizeDnaJob({ db, config }: WorkerDependencies) 
       .where(and(eq(assets.brandId, brandId), eq(assets.kind, 'logo')));
     await saveBrandDna(db, brandId, logo ? { ...dna, visuals: { ...dna.visuals, logoAssetId: logo.id } } : dna);
     await db.update(brands).set({ status: 'ready' }).where(eq(brands.id, brandId));
-  });
+    },
+    { onFailed: ({ brandId }) => fallBackToManualInput(db, brandId) },
+  );
 }

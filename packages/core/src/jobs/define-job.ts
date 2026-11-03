@@ -17,11 +17,13 @@ export type JobContext = {
 export type JobDefinition<N extends JobName = JobName> = {
   name: N;
   run(payload: JobPayload<N>, context: JobContext): Promise<void>;
+  onFailed?(payload: JobPayload<N>, error: { code: string; message: string }): Promise<void>;
 };
 
 export function defineJob<N extends JobName>(
   name: N,
   run: (payload: JobPayload<N>, context: JobContext) => Promise<void>,
+  options: { onFailed?: JobDefinition<N>['onFailed'] } = {},
 ): JobDefinition<N> {
-  return { name, run };
+  return { name, run, ...options };
 }

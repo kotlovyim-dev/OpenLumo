@@ -16,6 +16,8 @@ import {
 } from '@openlumo/core';
 import { assets, brandMembers, brandSources, brands, users, type Database } from '@openlumo/db';
 import { createTestDatabase } from '@openlumo/db/testing';
+import { ProviderError } from '@openlumo/providers';
+import { fakeResponses } from '../../../packages/core/src/models/fake-responses';
 import { createBrandCrawlJob } from '../src/jobs/brand-crawl';
 import { createBrandSynthesizeDnaJob } from '../src/jobs/brand-synthesize-dna';
 
@@ -161,6 +163,30 @@ describe('brand jobs', () => {
     expect(enqueued).toEqual([]);
     expect(await brandStatus(brand.id)).toBe('needs_input');
     expect((await getBrandDna(db, brand.id))?.dna.identity.name).toBe('Ghost Co');
+  });
+
+  it('falls back to prefilled manual input when synthesis fails non-retryably', async () => {
+    enqueued.length = 0;
+    const brand = await createBrand(db, { url: `${fixtureOrigin}/`, createdBy: 'u1' });
+    await createBrandCrawlJob(deps()).run({ brandId: brand.id }, context);
+    const original = fakeResponses.brand_dna!;
+    fakeResponses.brand_dna = () => {
+      throw new ProviderError('unauthorized');
+    };
+    const job = createBrandSynthesizeDnaJob(deps());
+    try {
+      await expect(job.run({ brandId: brand.id }, context)).rejects.toMatchObject({ code: 'unauthorized' });
+    } finally {
+      fakeResponses.brand_dna = original;
+    }
+
+    await job.onFailed!({ brandId: brand.id }, { code: 'unauthorized', message: 'unauthorized' });
+
+    expect(await brandStatus(brand.id)).toBe('needs_input');
+    const saved = await getBrandDna(db, brand.id);
+    expect(saved?.dna.identity.name).toBe('Sunrise Bakery');
+    expect(saved?.dna.visuals.palette[0]).toBe('#ff5a1f');
+    expect(saved?.dna.visuals.logoAssetId).toBeTruthy();
   });
 
   it('createBrand without a URL needs input and adds the creator as owner', async () => {

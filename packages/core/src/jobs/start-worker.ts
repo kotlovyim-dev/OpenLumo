@@ -62,6 +62,11 @@ export async function startWorker(
           const finalAttempt = job.retryCount >= job.retryLimit;
           if (!retryable || finalAttempt) {
             await updateRun(db, runId, { status: 'failed', errorCode: code, error: message });
+            try {
+              await definition.onFailed?.(parsed.data, { code, message });
+            } catch (hookError) {
+              console.error(`onFailed hook for ${definition.name} threw`, hookError);
+            }
             return;
           }
           await updateRun(db, runId, { status: 'queued', errorCode: code, error: message });
