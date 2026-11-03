@@ -1,24 +1,19 @@
 import { and, eq } from 'drizzle-orm';
-import { createPartialBrandDna, getBrandDna, saveBrandDna } from '@openlumo/core';
-import { assets, brandSources, brands, type Database } from '@openlumo/db';
-
-type PageMeta = { title?: string; openGraph?: Record<string, string>; palette?: string[] };
+import { createPartialBrandDna, getBrandDna, loadCrawlSources, saveBrandDna } from '@openlumo/core';
+import { assets, brands, type Database } from '@openlumo/db';
 
 export async function fallBackToManualInput(db: Database, brandId: string): Promise<void> {
   if (!(await getBrandDna(db, brandId))) {
     const [brand] = await db.select().from(brands).where(eq(brands.id, brandId));
-    const pages = await db
-      .select()
-      .from(brandSources)
-      .where(and(eq(brandSources.brandId, brandId), eq(brandSources.kind, 'page')));
-    const metas = pages.map((page) => (page.meta ?? {}) as PageMeta);
+    const crawl = await loadCrawlSources(db, brandId);
+    const pages = crawl?.pages ?? [];
     const [logo] = await db
       .select({ id: assets.id })
       .from(assets)
       .where(and(eq(assets.brandId, brandId), eq(assets.kind, 'logo')));
     const name =
-      metas.find((meta) => meta.openGraph?.['og:site_name'])?.openGraph?.['og:site_name'] ||
-      metas.find((meta) => meta.title)?.title ||
+      pages.find((page) => page.openGraph['og:site_name'])?.openGraph['og:site_name'] ||
+      pages.find((page) => page.title)?.title ||
       brand?.name ||
       '';
     await saveBrandDna(
@@ -26,7 +21,7 @@ export async function fallBackToManualInput(db: Database, brandId: string): Prom
       brandId,
       createPartialBrandDna({
         name,
-        palette: metas.find((meta) => meta.palette)?.palette ?? [],
+        palette: crawl?.palette ?? [],
         ...(logo ? { logoAssetId: logo.id } : {}),
       }),
     );

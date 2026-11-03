@@ -11,6 +11,7 @@ export * from './jobs/define-job';
 export * from './jobs/start-worker';
 export * from './jobs/job-events';
 export * from './crawl/crawl-site';
+export * from './crawl/crawl-sources';
 export * from './brand-dna/brand-dna-schema';
 export * from './brand-dna/brand-dna-repository';
 export * from './brand-dna/synthesize-brand-dna';

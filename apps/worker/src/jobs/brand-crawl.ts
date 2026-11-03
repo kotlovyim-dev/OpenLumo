@@ -1,73 +1,18 @@
-import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import {
   type CrawlResult,
   crawlSite,
   defineJob,
+  saveCrawlSources,
 } from '@openlumo/core';
-import { assets, brandSources, brands } from '@openlumo/db';
+import { brands } from '@openlumo/db';
 import { fallBackToManualInput } from './brand-fallback';
 import type { WorkerDependencies } from '../worker-dependencies';
 
 const THIN_SITE_CHARACTERS = 200;
 
-const logoExtensions: Record<string, string> = {
-  'image/png': 'png',
-  'image/jpeg': 'jpg',
-  'image/gif': 'gif',
-  'image/webp': 'webp',
-  'image/svg+xml': 'svg',
-  'image/x-icon': 'ico',
-  'image/vnd.microsoft.icon': 'ico',
-};
-
-type Transaction = Parameters<Parameters<WorkerDependencies['db']['transaction']>[0]>[0];
-
-async function storeLogo(
-  tx: Transaction,
-  storage: WorkerDependencies['storage'],
-  brandId: string,
-  logo: NonNullable<CrawlResult['logo']>,
-): Promise<void> {
-  const id = randomUUID();
-  const extension = logoExtensions[logo.mimeType] ?? 'bin';
-  const storageKey = `brands/${brandId}/${id}.${extension}`;
-  await storage.write(storageKey, logo.bytes);
-  await tx.insert(assets).values({ id, brandId, kind: 'logo', storageKey, mimeType: logo.mimeType });
-}
-
-async function storeSources(
-  { db, storage }: WorkerDependencies,
-  brandId: string,
-  crawl: CrawlResult,
-): Promise<void> {
-  await db.transaction(async (tx) => {
-    await tx.delete(brandSources).where(eq(brandSources.brandId, brandId));
-    await tx.delete(assets).where(eq(assets.brandId, brandId));
-    if (crawl.pages.length > 0) {
-      await tx.insert(brandSources).values(
-        crawl.pages.map((page, index) => ({
-          brandId,
-          kind: 'page' as const,
-          url: page.url,
-          text: page.text,
-          meta: {
-            title: page.title,
-            description: page.description,
-            openGraph: page.openGraph,
-            ...(index === 0 ? { palette: crawl.palette } : {}),
-          },
-        })),
-      );
-    }
-    if (!crawl.logo) return;
-    await tx.insert(brandSources).values({ brandId, kind: 'logo', url: crawl.logo.url });
-    await storeLogo(tx, storage, brandId, crawl.logo);
-  });
-}
-
 export function createBrandCrawlJob(deps: WorkerDependencies) {
-  const { db, config } = deps;
+  const { db, config, storage } = deps;
   return defineJob(
     'brand.crawl',
     async ({ brandId }, context) => {
@@ -81,7 +26,7 @@ export function createBrandCrawlJob(deps: WorkerDependencies) {
           return { pages: [], palette: [] };
         },
       );
-      await storeSources(deps, brandId, crawl);
+      await saveCrawlSources(db, storage, brandId, crawl);
 
       const totalText = crawl.pages.reduce((sum, page) => sum + page.text.length, 0);
       if (totalText < THIN_SITE_CHARACTERS) {
