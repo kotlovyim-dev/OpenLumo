@@ -74,7 +74,7 @@ describe('job runtime', { timeout: 30_000 }, () => {
       config,
     );
 
-    const runId = await enqueue(boss, db, 'strategy.create', { brandId });
+    const runId = await enqueue(boss, db, 'strategy.create', { brandId, goal: 'awareness', channels: ['instagram'] });
     const run = await waitForRun(db, runId, 'failed');
 
     expect(run.errorCode).toBe('unauthorized');
@@ -96,7 +96,12 @@ describe('job runtime', { timeout: 30_000 }, () => {
       config,
     );
 
-    const runId = await enqueue(boss, db, 'plan.month', { brandId });
+    const runId = await enqueue(boss, db, 'plan.month', {
+      brandId,
+      strategyId: crypto.randomUUID(),
+      from: new Date().toISOString(),
+      days: 30,
+    });
     const run = await waitForRun(db, runId, 'succeeded');
 
     expect(attempts).toBe(2);

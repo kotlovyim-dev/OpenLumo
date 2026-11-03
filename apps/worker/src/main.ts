@@ -10,7 +10,7 @@ const config = loadConfig(process.env);
 const db = createDatabase(config.databaseUrl);
 const boss = await createQueue(config.databaseUrl, { createQueues: true });
 const storage = createAssetStorage(config.storageDirectory);
-await startWorker(boss, db, createJobDefinitions({ db, config, storage }), config);
+await startWorker(boss, db, createJobDefinitions({ db, config, storage, boss }), config);
 console.log(`worker started; queues: ${jobNames.join(', ')}`);
 
 async function shutdown() {

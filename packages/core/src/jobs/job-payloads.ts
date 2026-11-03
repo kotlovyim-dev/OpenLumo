@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { channelSchema } from '../planner/channel-formats';
+import { goalSchema } from '../planner/strategy-schema';
 import type { JobName } from './job-names';
 
 const brandPayload = z.object({ brandId: z.uuid() });
@@ -11,8 +13,12 @@ const itemPayload = brandPayload.extend({
 export const jobPayloads = {
   'brand.crawl': brandPayload,
   'brand.synthesize-dna': brandPayload.extend({ mergeFeedback: z.boolean().optional() }),
-  'strategy.create': brandPayload,
-  'plan.month': brandPayload,
+  'strategy.create': brandPayload.extend({ goal: goalSchema, channels: z.array(channelSchema).min(1) }),
+  'plan.month': brandPayload.extend({
+    strategyId: z.uuid(),
+    from: z.iso.datetime(),
+    days: z.number().int().positive(),
+  }),
   'plan.top-up': brandPayload,
   'item.generate': itemPayload.extend({ instruction: z.string().optional() }),
   'item.regenerate': itemPayload,
