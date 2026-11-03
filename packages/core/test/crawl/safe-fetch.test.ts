@@ -27,6 +27,16 @@ describe('isPrivateAddress', () => {
     ['::ffff:127.0.0.1', true],
     ['::ffff:7f00:1', true],
     ['::ffff:8.8.8.8', false],
+    ['64:ff9b::7f00:1', true],
+    ['64:ff9b::a00:1', true],
+    ['64:ff9b::808:808', false],
+    ['64:ff9b:1::7f00:1', true],
+    ['64:ff9b:1::808:808', false],
+    ['::7f00:1', true],
+    ['::a9fe:a9fe', true],
+    ['::808:808', false],
+    ['::ffff:0:7f00:1', true],
+    ['::ffff:0:808:808', false],
     ['2606:4700:4700::1111', false],
   ])('%s -> %s', (ip, expected) => {
     expect(isPrivateAddress(ip)).toBe(expected);
@@ -48,6 +58,19 @@ describe('safeFetch', () => {
       } else if (path === '/loop') {
         res.statusCode = 302;
         res.setHeader('location', '/loop');
+        res.end();
+      } else if (path.startsWith('/chain/')) {
+        const remaining = Number(path.slice('/chain/'.length));
+        if (remaining === 0) {
+          res.end('done');
+        } else {
+          res.statusCode = 302;
+          res.setHeader('location', `/chain/${remaining - 1}`);
+          res.end();
+        }
+      } else if (path === '/bad-location') {
+        res.statusCode = 302;
+        res.setHeader('location', 'http://[');
         res.end();
       } else if (path === '/to-private') {
         res.statusCode = 302;
@@ -128,6 +151,32 @@ describe('safeFetch', () => {
     await expect(safeFetch(`${base}/loop`, { allowPrivateHosts: true })).rejects.toThrow(
       /Too many redirects/,
     );
+  });
+
+  it('follows exactly five redirects and rejects the sixth', async () => {
+    const result = await safeFetch(`${base}/chain/5`, {
+      allowPrivateHosts: true,
+    });
+    expect(new TextDecoder().decode(result.body)).toBe('done');
+    await expect(safeFetch(`${base}/chain/6`, { allowPrivateHosts: true })).rejects.toThrow(
+      /Too many redirects/,
+    );
+  });
+
+  it('rejects an invalid redirect location as unsafe', async () => {
+    await expect(safeFetch(`${base}/bad-location`, { allowPrivateHosts: true })).rejects.toThrow(
+      UnsafeUrlError,
+    );
+  });
+
+  it('counts DNS resolution against the timeout', async () => {
+    await expect(
+      safeFetch('http://stuck.test/', {
+        allowPrivateHosts: false,
+        timeoutMs: 50,
+        lookup: () => new Promise(() => {}),
+      }),
+    ).rejects.toMatchObject({ name: 'TimeoutError' });
   });
 
   it('connects to the validated address instead of re-resolving the hostname', async () => {

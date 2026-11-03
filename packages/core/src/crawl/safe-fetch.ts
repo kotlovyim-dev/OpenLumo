@@ -32,7 +32,23 @@ type Hop = { status: number; headers: http.IncomingHttpHeaders; body: Uint8Array
 
 const defaultLookup = (hostname: string) => dnsLookup(hostname, { all: true });
 
-async function resolveSafely(url: URL, options: SafeFetchOptions): Promise<ResolvedAddress> {
+function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    const onAbort = () => reject(signal.reason);
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+  });
+}
+
+async function resolveSafely(
+  url: URL,
+  options: SafeFetchOptions,
+  signal: AbortSignal,
+): Promise<ResolvedAddress> {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new UnsafeUrlError(`Unsupported scheme: ${url.protocol}`);
   }
@@ -40,7 +56,7 @@ async function resolveSafely(url: URL, options: SafeFetchOptions): Promise<Resol
   const family = isIP(hostname);
   const addresses = family
     ? [{ address: hostname, family }]
-    : await (options.lookup ?? defaultLookup)(hostname);
+    : await abortable((options.lookup ?? defaultLookup)(hostname), signal);
   const [first] = addresses;
   if (!first) throw new UnsafeUrlError(`No addresses for ${hostname}`);
   if (!options.allowPrivateHosts && addresses.some(({ address }) => isPrivateAddress(address))) {
@@ -62,6 +78,7 @@ function requestPinned(
       {
         method: 'GET',
         signal,
+        agent: false,
         headers: { 'user-agent': 'OpenLumo-Crawler', accept: 'text/html,*/*;q=0.5' },
         lookup: (_hostname, lookupOptions, callback) => {
           if (lookupOptions.all) callback(null, [pinned]);
@@ -108,12 +125,16 @@ export async function safeFetch(
     throw new UnsafeUrlError(`Invalid URL: ${rawUrl}`);
   }
   for (let redirects = 0; ; redirects += 1) {
-    const pinned = await resolveSafely(url, options);
+    const pinned = await resolveSafely(url, options, signal);
     const hop = await requestPinned(url, pinned, maxBytes, signal);
     const location = hop.headers.location;
     if (hop.status >= 300 && hop.status < 400 && location) {
       if (redirects >= maxRedirects) throw new UnsafeUrlError('Too many redirects');
-      url = new URL(location, url);
+      try {
+        url = new URL(location, url);
+      } catch {
+        throw new UnsafeUrlError(`Invalid redirect location: ${location}`);
+      }
       continue;
     }
     return {
