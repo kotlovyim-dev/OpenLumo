@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "@openlumo/core": "workspace:*",
-    "@openlumo/db": "workspace:*"
+    "@openlumo/db": "workspace:*",
+    "drizzle-orm": "0.45.4"
   },
   "devDependencies": {
     "tsx": "4.23.15"
