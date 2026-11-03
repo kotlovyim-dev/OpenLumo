@@ -1,0 +1,7 @@
+:root { --brand: #ff5a1f; }
+body { color: #111111; background: #ffffff; font-family: system-ui, sans-serif; }
+a, .button { color: #ff5a1f; }
+.button { background: #ff5a1f; border: 1px solid #FF5A1F; color: #fff; }
+h1 { color: #ff5a1f; }
+footer { background: #1d3557; color: #000; }
+.muted { color: #1d3557; background: transparent; }
