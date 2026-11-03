@@ -2,6 +2,7 @@ import type { TextRequest } from '@openlumo/providers';
 import type { BrandDna } from '../brand-dna/brand-dna-schema';
 import { channelFormats, type Channel } from '../planner/channel-formats';
 import type { StrategyDocument } from '../planner/strategy-schema';
+import type { BlogPostCopy, CarouselCopy, EmailCopy, SocialPostCopy, StaticAdCopy } from '../studio/format-schemas';
 
 const sunriseBakeryDna: BrandDna = {
   identity: {
@@ -80,10 +81,63 @@ function contentPlanFor(request: TextRequest) {
   return { slots };
 }
 
+function imageBrief(request: TextRequest, subject: string) {
+  const instruction = /^Instruction: (.+)$/m.exec(requestText(request))?.[1];
+  return { prompt: instruction ? `${subject} ${instruction}` : subject, headlineOverlay: 'Fresh every morning' };
+}
+
+function socialPostCopy(request: TextRequest): SocialPostCopy {
+  return {
+    caption: 'Still warm from the oven. Come say hello before the sun is up.',
+    hashtags: ['#sunrisebakery', '#freshbread'],
+    imageBrief: imageBrief(request, 'A golden sourdough loaf on a wooden table in warm morning light.'),
+  };
+}
+
+function carouselCopy(request: TextRequest): CarouselCopy {
+  return {
+    slides: ['Mix', 'Shape', 'Bake'].map((title) => ({
+      title,
+      text: `${title} the dough with care.`,
+      imageBrief: imageBrief(request, `A baker's hands during the ${title.toLowerCase()} step in warm light.`),
+    })),
+    caption: 'From dough to loaf, the way we do it every morning.',
+  };
+}
+
+function staticAdCopy(request: TextRequest): StaticAdCopy {
+  return {
+    headline: 'Bread worth waking up for',
+    primaryText: 'Handmade loaves baked every morning for your street.',
+    callToAction: 'Order today',
+    imageBrief: imageBrief(request, 'A basket of fresh loaves beside a window at sunrise.'),
+  };
+}
+
+const emailCopy: EmailCopy = {
+  subject: 'Fresh from the oven this week',
+  preheader: 'Our new seasonal loaf is here.',
+  body: 'Hello neighbour,\n\nThis week we baked a new seasonal loaf. Come by before noon while it is still warm.\n\nSunrise Bakery',
+};
+
+const blogPostCopy: BlogPostCopy = {
+  seoTitle: 'How to keep sourdough fresh for a week',
+  metaDescription: 'Simple storage tips to keep a handmade sourdough loaf fresh for days.',
+  outline: ['Why sourdough keeps well', 'Where to store it', 'How to revive a stale loaf'],
+  article:
+    'Sourdough keeps longer than most bread. Store it cut side down on a board, then wrap it in cloth once cool. To revive a stale loaf, sprinkle it with water and warm it in the oven.',
+  faq: [{ question: 'Can I freeze sourdough?', answer: 'Yes. Slice it first and freeze the slices in a sealed bag.' }],
+};
+
 export const fakeResponses: Record<string, (request: TextRequest) => unknown> = {
   brand_dna: () => sunriseBakeryDna,
   strategy: strategyFor,
   content_plan: contentPlanFor,
+  copy_social_post: socialPostCopy,
+  copy_carousel: carouselCopy,
+  copy_static_ad: staticAdCopy,
+  copy_email: () => emailCopy,
+  copy_blog_post: () => blogPostCopy,
 };
 
 export const defaultFakeReply = 'ok';
