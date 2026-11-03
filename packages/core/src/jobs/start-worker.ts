@@ -1,0 +1,74 @@
+import type { PgBoss } from 'pg-boss';
+import type { Database } from '@openlumo/db';
+import type { Config } from '../config';
+import type { JobContext, JobDefinition } from './define-job';
+import { jobPayloads } from './job-payloads';
+import { addRunCost, updateRun } from './job-runs';
+import { enqueue } from './queue';
+
+type WorkerConfig = Pick<Config, 'globalJobConcurrency' | 'brandJobConcurrency'>;
+
+function describeError(error: unknown): { code: string; message: string; retryable: boolean } {
+  const { code, retryable, message } = (error ?? {}) as Record<string, unknown>;
+  return {
+    code: typeof code === 'string' ? code : 'unknown',
+    message: typeof message === 'string' ? message : String(error),
+    retryable: retryable !== false,
+  };
+}
+
+export async function startWorker(
+  boss: PgBoss,
+  db: Database,
+  definitions: JobDefinition[],
+  config: WorkerConfig,
+): Promise<void> {
+  for (const definition of definitions) {
+    await boss.work(
+      definition.name,
+      {
+        localConcurrency: config.globalJobConcurrency,
+        localGroupConcurrency: Math.min(config.brandJobConcurrency, config.globalJobConcurrency),
+        batchSize: 1,
+        includeMetadata: true,
+      },
+      async ([job]) => {
+        if (!job) return;
+        const runId = job.id;
+        await updateRun(db, runId, { status: 'running', step: null, error: null, errorCode: null });
+
+        const parsed = jobPayloads[definition.name].safeParse(job.data);
+        if (!parsed.success) {
+          await updateRun(db, runId, {
+            status: 'failed',
+            errorCode: 'invalid_payload',
+            error: parsed.error.message,
+          });
+          return;
+        }
+
+        const context: JobContext = {
+          runId,
+          signal: job.signal,
+          reportProgress: (step) => updateRun(db, runId, { step }),
+          recordUsage: (usage) => addRunCost(db, runId, usage),
+          enqueue: (name, payload, options) => enqueue(boss, db, name, payload, options),
+        };
+
+        try {
+          await definition.run(parsed.data, context);
+        } catch (error) {
+          const { code, message, retryable } = describeError(error);
+          const finalAttempt = job.retryCount >= job.retryLimit;
+          if (!retryable || finalAttempt) {
+            await updateRun(db, runId, { status: 'failed', errorCode: code, error: message });
+            return;
+          }
+          await updateRun(db, runId, { status: 'queued', errorCode: code, error: message });
+          throw error;
+        }
+        await updateRun(db, runId, { status: 'succeeded' });
+      },
+    );
+  }
+}

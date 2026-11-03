@@ -1,6 +1,5 @@
 import type { Database } from '@openlumo/db';
 import {
-  FakeProvider,
   ProviderError,
   type ImageModel,
   type LanguageModel,
@@ -9,7 +8,7 @@ import {
 import { createOpenRouter } from '@openlumo/providers/openrouter';
 import type { Config } from '../config';
 import { readSecret } from '../secrets/secret-store';
-import { defaultFakeReply, fakeResponses } from '../../test-fixtures/fake-responses';
+import { createFakeCatalog, createFakeModels } from './fake-models';
 import { getModelSetting, type ModelCapability } from './model-settings';
 
 export type ResolvedModels = {
@@ -30,30 +29,6 @@ export class MissingModelSettingError extends Error {
   }
 }
 
-const failedOncePrompts = new Set<string>();
-
-function createFakeBrain(): FakeProvider {
-  return new FakeProvider({
-    respond: (request) => {
-      const fixture = fakeResponses[request.jsonSchema?.name ?? ''];
-      return fixture ? JSON.stringify(fixture(request)) : defaultFakeReply;
-    },
-  });
-}
-
-function createFakeImage(): ImageModel {
-  const provider = new FakeProvider();
-  return {
-    async generate(request) {
-      if (request.prompt.includes('#fail-once') && !failedOncePrompts.has(request.prompt)) {
-        failedOncePrompts.add(request.prompt);
-        throw new ProviderError('invalid_output', 'Scripted one-time image failure');
-      }
-      return provider.generate(request);
-    },
-  };
-}
-
 async function requireApiKey(db: Database, config: Config): Promise<string> {
   const apiKey = await readSecret(db, 'openrouter_api_key', config.appSecret);
   if (!apiKey) throw new ProviderError('unauthorized', 'No OpenRouter API key is stored');
@@ -72,18 +47,12 @@ export async function verifyApiKey(apiKey: string, config: Config): Promise<bool
 }
 
 export async function resolveCatalog(db: Database, config: Config): Promise<ModelCatalog> {
-  if (config.testProviders === 'fake') return new FakeProvider();
+  if (config.testProviders === 'fake') return createFakeCatalog();
   return createOpenRouter(await requireApiKey(db, config));
 }
 
 export async function resolveModels(db: Database, config: Config): Promise<ResolvedModels> {
-  if (config.testProviders === 'fake') {
-    return {
-      brain: { model: createFakeBrain(), modelId: 'fake/text' },
-      image: { model: createFakeImage(), modelId: 'fake/image' },
-      catalog: new FakeProvider(),
-    };
-  }
+  if (config.testProviders === 'fake') return createFakeModels();
   const provider = createOpenRouter(await requireApiKey(db, config));
   return {
     brain: { model: provider, modelId: await requireModelId(db, 'brain') },

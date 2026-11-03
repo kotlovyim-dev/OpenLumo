@@ -8,4 +8,5 @@ export * from './jobs/job-names';
 export * from './jobs/job-payloads';
 export * from './jobs/queue';
 export * from './jobs/define-job';
+export * from './jobs/start-worker';
 export * from './jobs/job-events';

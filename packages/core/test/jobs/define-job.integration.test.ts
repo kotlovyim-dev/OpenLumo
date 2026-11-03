@@ -5,7 +5,8 @@ import type { PgBoss } from 'pg-boss';
 import { brands, jobRuns, users, type Database } from '@openlumo/db';
 import { createTestDatabase } from '@openlumo/db/testing';
 import { ProviderError } from '@openlumo/providers';
-import { defineJob, startWorker } from '../../src/jobs/define-job';
+import { defineJob } from '../../src/jobs/define-job';
+import { startWorker } from '../../src/jobs/start-worker';
 import { listenToJobEvents, type JobEvent } from '../../src/jobs/job-events';
 import { createQueue, enqueue } from '../../src/jobs/queue';
 
