@@ -18,7 +18,7 @@ const onePixelPng = Uint8Array.from(
   ),
 );
 
-const zeroUsage: Usage = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
+const zeroUsage = (): Usage => ({ inputTokens: 0, outputTokens: 0, costUsd: 0 });
 
 type TextResponse = string | TextResult | ProviderError;
 type ImageResponse = Uint8Array | ProviderError;
@@ -52,20 +52,20 @@ export class FakeProvider implements LanguageModel, ImageModel, ModelCatalog {
     this.textCalls += 1;
     if (response instanceof ProviderError) throw response;
     return typeof response === 'string'
-      ? { text: response, toolCalls: [], usage: zeroUsage }
+      ? { text: response, toolCalls: [], usage: zeroUsage() }
       : response;
   }
 
   async generate(request: ImageRequest): Promise<ImageResult> {
     request.signal?.throwIfAborted();
     this.requests.push(request);
-    const { image = onePixelPng } = this.options;
+    const { image = onePixelPng.slice() } = this.options;
     const response = typeof image === 'function' ? image(request) : image;
     if (response instanceof ProviderError) throw response;
-    return { bytes: response, mimeType: 'image/png', usage: zeroUsage };
+    return { bytes: response, mimeType: 'image/png', usage: zeroUsage() };
   }
 
   async listModels(): Promise<ModelInfo[]> {
-    return models;
+    return models.map((model) => ({ ...model, outputModalities: [...model.outputModalities] }));
   }
 }
