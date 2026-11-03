@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./openrouter": "./src/openrouter/index.ts",
     "./testing": "./src/testing/contract-suite.ts"
   },
   "scripts": {
