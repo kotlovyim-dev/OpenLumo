@@ -21,6 +21,14 @@ test('signs up, learns a brand, plans content, exports it and chats', async ({ p
 
   const brandId = await createBrandFromFixtureSite(page);
 
+  await expect(page.getByRole('heading', { name: 'Web research' })).toBeVisible();
+  await expect(page.getByText(/Researched on .+ · 1 source$/)).toBeVisible();
+  await expect(page.getByText('Golden Crust Bakery', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'example.com' })).toHaveAttribute('href', 'https://example.com/sunrise-bakery-review');
+  await page.getByRole('button', { name: 'Refresh research' }).click();
+  await expect(page.getByRole('button', { name: 'Refresh research' })).toBeEnabled({ timeout: 60_000 });
+  await expect(page.getByText('Golden Crust Bakery', { exact: true })).toBeVisible();
+
   await page.goto(`/brands/${brandId}/strategy`);
   await page.getByRole('checkbox', { name: 'Instagram' }).check();
   await page.getByRole('button', { name: 'Create my strategy' }).click();

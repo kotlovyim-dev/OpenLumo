@@ -1,6 +1,6 @@
 # OpenLumo
 
-OpenLumo is an open-source, self-hosted AI marketing studio. Paste your website, and Lumo learns your brand, plans a month of content, drafts posts, ads, emails and blog articles with matching images, and puts everything on a board where you approve, edit or regenerate each piece.
+OpenLumo is an open-source, self-hosted AI marketing studio. Paste a link to your website, and Lumo reads your site, researches your brand, audience and competitors on the live web, plans a month of content, drafts posts, ads, emails and blog articles with matching images, and puts everything on a board where you approve, edit or regenerate each piece.
 
 Lumo does the work, you keep the veto: nothing leaves the board without an explicit yes.
 
@@ -33,6 +33,14 @@ OpenLumo talks to models through OpenRouter, with your own key. After signing up
 3. Choose the image model, which draws the images for posts and ads.
 
 You can change the key and both models at any time under Settings. A new model applies to the next job without a restart.
+
+## Web research
+
+When you create a brand from a link, Lumo reads up to 10 pages of the site and then asks the brain model to research the brand on the live web through the OpenRouter web search plugin. The research fills in the brand name, product features, audience and where it spends time, and three to five competitors with their positioning, strengths and weaknesses. Every finding keeps its source link, and competitor websites are checked before they are saved.
+
+Markets move quickly, so the Brand DNA page shows when the research ran and lets owners and editors refresh it. A refresh replaces competitors, features and audience and leaves the rest of the Brand DNA as it is.
+
+Web search uses the same OpenRouter key and is billed by OpenRouter per search result on top of the model tokens. The cost shows up on each research run like any other job. If the search fails, Lumo still learns the brand from the site alone and the Brand DNA page offers to try again.
 
 ## Development
 
@@ -68,12 +76,12 @@ apps/
   web/        Next.js app: pages, server actions, API routes
   worker/     Node process that runs background jobs
 packages/
-  core/       Domain logic: crawling, brand DNA, planning, studio, export, chat
+  core/       Domain logic: crawling, web research, brand DNA, planning, studio, export, chat
   db/         Drizzle schema and migrations for Postgres
   providers/  Capability-typed model adapters, starting with OpenRouter
 ```
 
-- **Jobs.** The web app never calls a model. Every generation is a pg-boss job in Postgres: crawling a site, writing the brand DNA, creating a strategy, planning a month, drafting an item, regenerating it, building an export, replying in chat. The worker runs them with retries and records each run with its progress and cost.
+- **Jobs.** The web app never calls a model. Every generation is a pg-boss job in Postgres: crawling a site, researching the brand on the web, writing the brand DNA, creating a strategy, planning a month, drafting an item, regenerating it, building an export, replying in chat. The worker runs them with retries and records each run with its progress and cost.
 - **Live progress.** The worker publishes job events with `pg_notify`. The web app listens on Postgres and streams the events to the browser over server-sent events, so cards and progress labels update without polling.
 - **Providers.** Models are typed by capability (`LanguageModel`, `ImageModel`), and domain code depends only on those interfaces. OpenRouter is the first adapter; settings map each capability to a model.
 - **Storage.** Images and exports are stored on local disk under `STORAGE_DIRECTORY`. In Docker that is the `assets` volume shared by the web app and the worker.
@@ -93,7 +101,7 @@ packages/
 3. Autopilot: per-channel automatic approval with guardrails.
 4. Video and audio: short video ads, voiceover and music through OpenRouter video and speech models.
 5. Local providers: Ollama and LM Studio for the brain, ComfyUI for images and video, local TTS for audio.
-6. Localisation and competitor tracking.
+6. Localisation and competitor tracking over time.
 
 ## License
 
