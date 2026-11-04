@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FakeProvider, type TextRequest } from '@openlumo/providers';
-import { brandDnaSchema, createPartialBrandDna } from '../../src/brand-dna/brand-dna-schema';
+import { brandDnaSchema, createPartialBrandDna, normalisePalette } from '../../src/brand-dna/brand-dna-schema';
 import { synthesizeBrandDna } from '../../src/brand-dna/synthesize-brand-dna';
 import type { CrawlResult } from '../../src/crawl/crawl-site';
 import { fakeResponses } from '../../src/models/fake-responses';
@@ -35,16 +35,19 @@ describe('brandDnaSchema', () => {
     ).toBe(true);
   });
 
-  it('normalises palette colours to lowercase #rrggbb and rejects other values', () => {
+  it('accepts #rgb and #rrggbb palette colours in any case and rejects other values', () => {
     const withPalette = (palette: string[]) => ({
       ...(structuredClone(validDna) as object),
       visuals: { ...(validDna as { visuals: object }).visuals, palette },
     });
-    const parsed = brandDnaSchema.parse(withPalette(['#FFF', '#1A2B3C', '#abc123']));
-    expect(parsed.visuals.palette).toEqual(['#ffffff', '#1a2b3c', '#abc123']);
+    expect(brandDnaSchema.safeParse(withPalette(['#FFF', '#1A2B3C', '#abc123'])).success).toBe(true);
     for (const bad of ['red', '#ggg', '#12345', 'ffffff', '#1234567']) {
       expect(brandDnaSchema.safeParse(withPalette([bad])).success).toBe(false);
     }
+  });
+
+  it('normalises palettes to lowercase #rrggbb', () => {
+    expect(normalisePalette(['#FFF', '#1A2B3C', '#abc123'])).toEqual(['#ffffff', '#1a2b3c', '#abc123']);
   });
 
   it('rejects a tone of 11', () => {

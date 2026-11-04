@@ -24,6 +24,18 @@ describe('generateObject', () => {
     expect(sent.jsonSchema?.schema).toMatchObject({ type: 'object' });
   });
 
+  it('sends a strict JSON schema with additionalProperties false on every object', async () => {
+    const nested = z.object({ name: z.string(), address: z.object({ city: z.string() }) });
+    const provider = new FakeProvider({ textResponses: ['{"name":"Ann","address":{"city":"Kyiv"}}'] });
+    await generateObject(provider, { ...base, schema: nested });
+    const sent = (provider.requests[0] as TextRequest).jsonSchema?.schema as {
+      additionalProperties: boolean;
+      properties: { address: { additionalProperties: boolean } };
+    };
+    expect(sent.additionalProperties).toBe(false);
+    expect(sent.properties.address.additionalProperties).toBe(false);
+  });
+
   it('drops unknown keys', async () => {
     const provider = new FakeProvider({ textResponses: ['{"name":"Ann","age":3,"extra":true}'] });
     const { value } = await generateObject(provider, base);

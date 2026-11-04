@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { FakeProvider } from '@openlumo/providers';
-import { dnaFeedback, users, type Database } from '@openlumo/db';
+import { brandDna, dnaFeedback, users, type Database } from '@openlumo/db';
 import { createTestDatabase } from '@openlumo/db/testing';
 import { addDnaFeedback, listOpenFeedback, listOpenFeedbackNotes, markFeedbackMerged, mergeFeedback } from '../../src/brand-dna/dna-feedback';
 import { getBrandDna, saveBrandDna } from '../../src/brand-dna/brand-dna-repository';
@@ -85,5 +85,15 @@ describe('dna feedback', () => {
     const merged = await mergeFeedback(capturingBrain(), 'fake/text', dna, ['x']);
 
     expect(merged.dna.visuals.logoAssetId).toBe(logoAssetId);
+  });
+
+  it('drops invalid palette entries when reading stored DNA', async () => {
+    const brand = await createBrand(db, { name: 'Legacy', createdBy: 'u1' });
+    const dna = createPartialBrandDna({ name: 'Legacy', palette: ['#ff5a1f'] });
+    await db.insert(brandDna).values({
+      brandId: brand.id,
+      data: { ...dna, visuals: { ...dna.visuals, palette: ['red', '#ff5a1f', '#ABC'] } },
+    });
+    expect((await getBrandDna(db, brand.id))?.dna.visuals.palette).toEqual(['#ff5a1f', '#ABC']);
   });
 });

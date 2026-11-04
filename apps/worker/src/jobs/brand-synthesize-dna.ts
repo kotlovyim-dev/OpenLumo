@@ -7,6 +7,7 @@ import {
   loadCrawlSources,
   markFeedbackMerged,
   mergeFeedback,
+  normalisePalette,
   resolveModels,
   saveBrandDna,
   saveBrandDnaIfVersion,
@@ -24,13 +25,14 @@ async function mergeOpenFeedback({ db, config }: WorkerDependencies, brandId: st
   if (notes.length === 0) return;
 
   const { brain } = await resolveModels(db, config);
-  const { dna, usage } = await mergeFeedback(
+  const { dna: merged, usage } = await mergeFeedback(
     brain.model,
     brain.modelId,
     saved.dna,
     notes.map((note) => note.note),
   );
   await context.recordUsage(usage);
+  const dna = { ...merged, visuals: { ...merged.visuals, palette: normalisePalette(merged.visuals.palette) } };
   if (!(await saveBrandDnaIfVersion(db, brandId, dna, saved.version))) {
     console.warn(`Skipped feedback merge for brand ${brandId}: the DNA was edited while merging`);
     return;

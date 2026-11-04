@@ -1,7 +1,7 @@
 import { generateObject, type LanguageModel, type Usage } from '@openlumo/providers';
 import type { CrawlResult } from '../crawl/crawl-site';
 import { buildBrandDnaMessages } from './brand-dna-prompts';
-import { type BrandDna, brandDnaSchema } from './brand-dna-schema';
+import { type BrandDna, brandDnaSchema, normalisePalette } from './brand-dna-schema';
 
 export async function synthesizeBrandDna(
   brain: LanguageModel,
@@ -15,6 +15,6 @@ export async function synthesizeBrandDna(
     schema: brandDnaSchema,
     schemaName: 'brand_dna',
   });
-  const palette = crawl.palette.length > 0 ? crawl.palette : value.visuals.palette;
+  const palette = normalisePalette(crawl.palette.length > 0 ? crawl.palette : value.visuals.palette);
   return { dna: { ...value, visuals: { ...value.visuals, palette } }, usage };
 }

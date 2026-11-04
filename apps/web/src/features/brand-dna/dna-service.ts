@@ -5,6 +5,7 @@ import {
   enqueue,
   findBrand,
   getBrandDna,
+  normalisePalette,
   saveBrandDna,
   setBrandStatus,
   type Queue,
@@ -30,7 +31,11 @@ export async function updateBrandDna(context: DnaContext, brandId: string, dna: 
   const stored = await getBrandDna(context.db, brandId);
   await saveBrandDna(context.db, brandId, {
     ...parsed.data,
-    visuals: { ...parsed.data.visuals, logoAssetId: stored?.dna.visuals.logoAssetId },
+    visuals: {
+      ...parsed.data.visuals,
+      palette: normalisePalette(parsed.data.visuals.palette),
+      logoAssetId: stored?.dna.visuals.logoAssetId,
+    },
   });
   if (brand.status === 'needs_input') await setBrandStatus(context.db, brandId, 'ready');
   return { ok: true };

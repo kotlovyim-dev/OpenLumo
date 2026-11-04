@@ -1,12 +1,19 @@
 import { z } from 'zod';
 
-const hexColour = z
-  .string()
-  .regex(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i, 'Use a hex colour like #1a2b3c.')
-  .transform((value) => {
-    const digits = value.slice(1).toLowerCase();
+const HEX_COLOUR = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+const hexColour = z.string().regex(HEX_COLOUR, 'Use a hex colour like #1a2b3c.');
+
+export function isHexColour(value: string): boolean {
+  return HEX_COLOUR.test(value);
+}
+
+export function normalisePalette(palette: string[]): string[] {
+  return palette.map((colour) => {
+    const digits = colour.slice(1).toLowerCase();
     return `#${digits.length === 3 ? [...digits].map((digit) => digit + digit).join('') : digits}`;
   });
+}
 
 const toneScale = z.number().min(0).max(10);
 

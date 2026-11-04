@@ -1,6 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { brandDna, type Database } from '@openlumo/db';
-import { type BrandDna, brandDnaSchema } from './brand-dna-schema';
+import { type BrandDna, brandDnaSchema, isHexColour } from './brand-dna-schema';
 
 export async function saveBrandDna(db: Database, brandId: string, dna: BrandDna): Promise<void> {
   await db
@@ -18,7 +18,7 @@ export async function getBrandDna(
 ): Promise<{ dna: BrandDna; version: number } | null> {
   const [row] = await db.select().from(brandDna).where(eq(brandDna.brandId, brandId));
   if (!row) return null;
-  return { dna: brandDnaSchema.parse(row.data), version: row.version };
+  return { dna: brandDnaSchema.parse(dropInvalidPalette(row.data)), version: row.version };
 }
 
 export async function saveBrandDnaIfVersion(
@@ -33,4 +33,13 @@ export async function saveBrandDnaIfVersion(
     .where(and(eq(brandDna.brandId, brandId), eq(brandDna.version, expectedVersion)))
     .returning({ brandId: brandDna.brandId });
   return updated.length > 0;
+}
+
+function dropInvalidPalette(data: unknown): unknown {
+  const visuals = (data as { visuals?: { palette?: unknown } } | null)?.visuals;
+  if (!visuals || !Array.isArray(visuals.palette)) return data;
+  return {
+    ...(data as object),
+    visuals: { ...visuals, palette: visuals.palette.filter((colour) => typeof colour === 'string' && isHexColour(colour)) },
+  };
 }
