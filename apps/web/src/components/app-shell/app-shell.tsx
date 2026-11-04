@@ -4,6 +4,7 @@ import { Menu, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { cn } from '@/lib/utils';
+import { Wordmark } from '@/components/wordmark';
 import { SidebarNav, type BrandOption } from './sidebar-nav';
 import { UserMenu } from './user-menu';
 
@@ -69,7 +70,7 @@ export function AppShell({
         >
           <Menu className="size-5" aria-hidden="true" />
         </button>
-        <span className="text-lg font-bold tracking-tight">OpenLumo</span>
+        <Wordmark />
       </header>
       {sheetOpen && <div className="fixed inset-0 z-30 bg-black/60" onClick={() => setOpen(false)} aria-hidden="true" />}
       <aside
@@ -84,7 +85,7 @@ export function AppShell({
         )}
       >
         <div className="flex h-14 items-center justify-between px-5">
-          <span className="text-lg font-bold tracking-tight">OpenLumo</span>
+          <Wordmark />
           <button
             ref={closeRef}
             type="button"

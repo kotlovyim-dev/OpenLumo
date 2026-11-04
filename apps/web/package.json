@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --root ../.. --project unit apps/web"
   },
   "dependencies": {
     "@openlumo/core": "workspace:*",
@@ -27,6 +28,7 @@
     "@tailwindcss/postcss": "4.3.4",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "sharp": "0.35.5",
     "tailwindcss": "4.3.4"
   }
 }

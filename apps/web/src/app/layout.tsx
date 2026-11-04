@@ -7,6 +7,13 @@ const manrope = Manrope({ subsets: ['latin', 'cyrillic'], variable: '--font-manr
 export const metadata: Metadata = {
   title: { default: 'OpenLumo', template: '%s · OpenLumo' },
   description: 'Open source marketing workspace for your brand.',
+  icons: {
+    icon: [
+      { url: '/brand/logo/favicon.svg', type: 'image/svg+xml' },
+      { url: '/brand/logo/favicon-32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: { url: '/brand/logo/icon-512.png', sizes: '512x512', type: 'image/png' },
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
