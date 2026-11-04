@@ -21,17 +21,20 @@ export function ModelPicker({
   capability,
   currentModel,
   submitLabel = 'Save model',
+  reloadKey = 0,
   onSaved,
 }: {
   capability: ModelCapability;
   currentModel: string | null;
   submitLabel?: string;
+  reloadKey?: number;
   onSaved: () => void;
 }) {
   const id = useId();
   const listId = `${id}-list`;
   const [models, setModels] = useState<ModelOption[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -41,15 +44,21 @@ export function ModelPicker({
 
   useEffect(() => {
     let cancelled = false;
-    listAvailableModels(capability).then((result) => {
-      if (cancelled) return;
-      if (result.ok) setModels(result.models);
-      else setLoadError(result.error === 'no_api_key' ? 'Add your API key first.' : 'Could not load models.');
-    });
+    setModels(null);
+    setLoadError(null);
+    listAvailableModels(capability)
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok) setModels(result.models);
+        else setLoadError(result.error === 'no_api_key' ? 'Add your API key first.' : "Couldn't load models. Try again.");
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError("Couldn't load models. Try again.");
+      });
     return () => {
       cancelled = true;
     };
-  }, [capability]);
+  }, [capability, attempt, reloadKey]);
 
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -60,7 +69,7 @@ export function ModelPicker({
 
   function choose(model: ModelOption) {
     setSelected(model.id);
-    setQuery(model.name);
+    setQuery('');
     setOpen(false);
   }
 
@@ -68,7 +77,7 @@ export function ModelPicker({
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       setOpen(true);
-      setActive((index) => Math.min(index + 1, matches.length - 1));
+      setActive((index) => Math.max(0, Math.min(index + 1, matches.length - 1)));
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       setActive((index) => Math.max(index - 1, 0));
@@ -84,13 +93,18 @@ export function ModelPicker({
     if (!selected) return;
     setPending(true);
     setError(null);
-    const result = await saveModelChoice(capability, selected);
-    setPending(false);
-    if (!result.ok) {
-      setError(result.error === 'forbidden' ? 'Only an admin can change models.' : 'Could not save the model.');
-      return;
+    try {
+      const result = await saveModelChoice(capability, selected);
+      if (!result.ok) {
+        setError(result.error === 'forbidden' ? 'Only an admin can change models.' : 'Could not save the model.');
+        return;
+      }
+      onSaved();
+    } catch {
+      setError('Could not save the model.');
+    } finally {
+      setPending(false);
     }
-    onSaved();
   }
 
   return (
@@ -150,6 +164,11 @@ export function ModelPicker({
       <p role="alert" className="min-h-5 text-sm text-danger">
         {loadError ?? error}
       </p>
+      {loadError && loadError !== 'Add your API key first.' && (
+        <Button type="button" variant="outline" onClick={() => setAttempt((count) => count + 1)} className="self-start">
+          Retry
+        </Button>
+      )}
       <Button type="button" onClick={save} disabled={!selected || pending} className="self-start">
         {pending ? 'Saving...' : submitLabel}
       </Button>

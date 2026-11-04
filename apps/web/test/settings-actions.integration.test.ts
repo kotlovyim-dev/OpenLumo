@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { loadConfig, readSecret, verifyApiKey } from '@openlumo/core';
+import { loadConfig, readSecret, resolveCatalog, verifyApiKey } from '@openlumo/core';
 import { secrets } from '@openlumo/db';
 import { createTestDatabase } from '@openlumo/db/testing';
 import {
@@ -13,7 +13,7 @@ import {
 
 vi.mock('@openlumo/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@openlumo/core')>();
-  return { ...actual, verifyApiKey: vi.fn(actual.verifyApiKey) };
+  return { ...actual, verifyApiKey: vi.fn(actual.verifyApiKey), resolveCatalog: vi.fn(actual.resolveCatalog) };
 });
 
 const plaintext = 'sk-or-v1-supersecretvalue1234';
@@ -81,6 +81,25 @@ describe('settings actions', () => {
     const image = await listAvailableModels(member, 'image');
     expect(brain.ok && brain.models.map((model) => model.id)).toEqual(['fake/text']);
     expect(image.ok && image.models.map((model) => model.id)).toEqual(['fake/image']);
+  });
+
+  it('reports catalog_unavailable when the catalog throws', async () => {
+    vi.mocked(resolveCatalog).mockRejectedValueOnce(new Error('upstream down'));
+    expect(await listAvailableModels(admin, 'brain')).toEqual({ ok: false, error: 'catalog_unavailable' });
+    vi.mocked(resolveCatalog).mockRejectedValueOnce(new Error('upstream down'));
+    expect(await saveModelChoice(admin, 'brain', 'fake/text')).toEqual({ ok: false, error: 'catalog_unavailable' });
+  });
+
+  it('rejects a model that is not in the catalog for that capability', async () => {
+    expect(await saveModelChoice(admin, 'brain', 'fake/image')).toEqual({ ok: false, error: 'unknown_model' });
+    expect(await saveModelChoice(admin, 'image', 'nope/missing')).toEqual({ ok: false, error: 'unknown_model' });
+  });
+
+  it('hides all but the last four characters of long keys only', async () => {
+    expect(await getStoredKeyHint(admin)).toBe('••••1234');
+    await saveApiKey(admin, keyForm('short'));
+    expect(await getStoredKeyHint(admin)).toBe('••••');
+    await saveApiKey(admin, keyForm(plaintext));
   });
 
   it('saves model choices for admins only and reports setup completion', async () => {

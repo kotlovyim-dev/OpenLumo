@@ -21,14 +21,19 @@ export function ApiKeyForm({ submitLabel, onSaved }: { submitLabel: string; onSa
     const form = event.currentTarget;
     setPending(true);
     setError(null);
-    const result = await saveApiKey(new FormData(form));
-    setPending(false);
-    if (!result.ok) {
-      setError(messages[result.error] ?? 'Something went wrong. Try again.');
-      return;
+    try {
+      const result = await saveApiKey(new FormData(form));
+      if (!result.ok) {
+        setError(messages[result.error] ?? 'Something went wrong. Try again.');
+        return;
+      }
+      form.reset();
+      onSaved();
+    } catch {
+      setError('Something went wrong. Try again.');
+    } finally {
+      setPending(false);
     }
-    form.reset();
-    onSaved();
   }
 
   return (

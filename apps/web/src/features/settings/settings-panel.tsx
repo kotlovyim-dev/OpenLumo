@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { ApiKeyForm } from './api-key-form';
 import { ModelPicker } from './model-picker';
@@ -17,7 +18,12 @@ export function SettingsPanel({
   image: string | null;
 }) {
   const router = useRouter();
+  const [keyVersion, setKeyVersion] = useState(0);
   const refresh = () => router.refresh();
+  const keyReplaced = () => {
+    setKeyVersion((version) => version + 1);
+    refresh();
+  };
 
   return (
     <div className="flex max-w-xl flex-col gap-6">
@@ -28,7 +34,7 @@ export function SettingsPanel({
         </p>
         {isAdmin && (
           <div className="mt-4">
-            <ApiKeyForm submitLabel="Replace key" onSaved={refresh} />
+            <ApiKeyForm submitLabel="Replace key" onSaved={keyReplaced} />
           </div>
         )}
       </Card>
@@ -36,7 +42,7 @@ export function SettingsPanel({
         <h2 className="text-lg font-semibold">Brain model</h2>
         {isAdmin ? (
           <div className="mt-4">
-            <ModelPicker capability="brain" currentModel={brain} onSaved={refresh} />
+            <ModelPicker capability="brain" currentModel={brain} reloadKey={keyVersion} onSaved={refresh} />
           </div>
         ) : (
           <p className="mt-2 text-sm text-muted">{brain ?? 'Not set'}</p>
@@ -46,7 +52,7 @@ export function SettingsPanel({
         <h2 className="text-lg font-semibold">Image model</h2>
         {isAdmin ? (
           <div className="mt-4">
-            <ModelPicker capability="image" currentModel={image} onSaved={refresh} />
+            <ModelPicker capability="image" currentModel={image} reloadKey={keyVersion} onSaved={refresh} />
           </div>
         ) : (
           <p className="mt-2 text-sm text-muted">{image ?? 'Not set'}</p>

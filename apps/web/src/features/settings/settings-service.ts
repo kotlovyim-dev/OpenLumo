@@ -36,22 +36,32 @@ export async function saveApiKey(context: SettingsContext, formData: FormData): 
   return { ok: true };
 }
 
+type ModelListResult = { ok: true; models: ModelOption[] } | { ok: false; error: string };
+
+async function loadModels(context: SettingsContext, capability: ModelCapability): Promise<ModelListResult> {
+  const key = await readSecret(context.db, 'openrouter_api_key', context.config.appSecret);
+  if (!key) return { ok: false, error: 'no_api_key' };
+  try {
+    const catalog = await resolveCatalog(context.db, context.config);
+    const models = (await catalog.listModels())
+      .filter((model) => model.outputModalities.includes(outputModality[capability]))
+      .map(({ id, name, pricePerMillionInputTokens }) =>
+        pricePerMillionInputTokens === undefined ? { id, name } : { id, name, pricePerMillionInputTokens },
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return { ok: true, models };
+  } catch {
+    return { ok: false, error: 'catalog_unavailable' };
+  }
+}
+
 export async function listAvailableModels(
   context: SettingsContext,
   capability: ModelCapability,
-): Promise<{ ok: true; models: ModelOption[] } | { ok: false; error: string }> {
+): Promise<ModelListResult> {
   const parsed = capabilitySchema.safeParse(capability);
   if (!parsed.success) return { ok: false, error: 'invalid_capability' };
-  const key = await readSecret(context.db, 'openrouter_api_key', context.config.appSecret);
-  if (!key) return { ok: false, error: 'no_api_key' };
-  const catalog = await resolveCatalog(context.db, context.config);
-  const models = (await catalog.listModels())
-    .filter((model) => model.outputModalities.includes(outputModality[parsed.data]))
-    .map(({ id, name, pricePerMillionInputTokens }) =>
-      pricePerMillionInputTokens === undefined ? { id, name } : { id, name, pricePerMillionInputTokens },
-    )
-    .sort((a, b) => a.name.localeCompare(b.name));
-  return { ok: true, models };
+  return loadModels(context, parsed.data);
 }
 
 export async function saveModelChoice(
@@ -63,6 +73,9 @@ export async function saveModelChoice(
   const parsedCapability = capabilitySchema.safeParse(capability);
   const parsedModel = modelIdSchema.safeParse(modelId);
   if (!parsedCapability.success || !parsedModel.success) return { ok: false, error: 'invalid_model' };
+  const available = await loadModels(context, parsedCapability.data);
+  if (!available.ok) return available;
+  if (!available.models.some((model) => model.id === parsedModel.data)) return { ok: false, error: 'unknown_model' };
   await saveModelSetting(context.db, {
     capability: parsedCapability.data,
     provider: 'openrouter',
@@ -74,7 +87,8 @@ export async function saveModelChoice(
 
 export async function getStoredKeyHint(context: Pick<SettingsContext, 'db' | 'config'>): Promise<string | null> {
   const key = await readSecret(context.db, 'openrouter_api_key', context.config.appSecret);
-  return key ? `••••${key.slice(-4)}` : null;
+  if (!key) return null;
+  return key.length > 8 ? `••••${key.slice(-4)}` : '••••';
 }
 
 export async function getSetupStatus(context: Pick<SettingsContext, 'db' | 'config'>) {
