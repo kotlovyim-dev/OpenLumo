@@ -9,13 +9,18 @@ export type Queue = Awaited<ReturnType<typeof createQueue>>;
 
 export type QueueOptions = ConstructorOptions & { createQueues?: boolean };
 
+export const QUEUE_HEARTBEAT_SECONDS = 30;
+
+const queueSettings = { retryLimit: 2, retryBackoff: true, retryDelay: 5, heartbeatSeconds: QUEUE_HEARTBEAT_SECONDS };
+
 export async function createQueue(databaseUrl: string, options: QueueOptions = {}): Promise<PgBoss> {
   const { createQueues = false, ...bossOptions } = options;
   const boss = new PgBoss({ connectionString: databaseUrl, ...bossOptions });
   await boss.start();
   if (createQueues) {
     for (const name of jobNames) {
-      await boss.createQueue(name, { retryLimit: 2, retryBackoff: true, retryDelay: 5 });
+      await boss.createQueue(name, queueSettings);
+      await boss.updateQueue(name, queueSettings);
     }
   }
   return boss;

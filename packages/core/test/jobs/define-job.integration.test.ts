@@ -8,7 +8,7 @@ import { ProviderError } from '@openlumo/providers';
 import { defineJob } from '../../src/jobs/define-job';
 import { startWorker } from '../../src/jobs/start-worker';
 import { listenToJobEvents, type JobEvent } from '../../src/jobs/job-events';
-import { createQueue, enqueue } from '../../src/jobs/queue';
+import { QUEUE_HEARTBEAT_SECONDS, createQueue, enqueue } from '../../src/jobs/queue';
 
 const config = { globalJobConcurrency: 4, brandJobConcurrency: 2 };
 
@@ -173,6 +173,46 @@ describe('job runtime', { timeout: 30_000 }, () => {
         { name: 'fatal', code: 'unauthorized' },
         { name: 'retried', code: 'rate_limited' },
       ]);
+  });
+
+  it('runs onFailed before announcing the failure so listeners see the settled state', async () => {
+    const events: JobEvent[] = [];
+    const unlisten = await listenToJobEvents(url, (event) => events.push(event));
+    let failedAnnouncedBeforeHook: boolean | undefined;
+    await startWorker(
+      boss,
+      db,
+      [
+        defineJob(
+          'brand.research',
+          async () => {
+            throw new ProviderError('unauthorized');
+          },
+          {
+            onFailed: async () => {
+              await new Promise((resolve) => setTimeout(resolve, 200));
+              failedAnnouncedBeforeHook = events.some((event) => event.status === 'failed');
+            },
+          },
+        ),
+      ],
+      config,
+    );
+
+    const runId = await enqueue(boss, db, 'brand.research', { brandId });
+    await waitForRun(db, runId, 'failed');
+    await unlisten();
+
+    expect(failedAnnouncedBeforeHook).toBe(false);
+  });
+
+  it('gives every queue a heartbeat so a job left by a dead worker is retried soon', async () => {
+    await boss.updateQueue('brand.crawl', { heartbeatSeconds: 600 });
+    const restarted = await createQueue(url, { createQueues: true });
+
+    expect((await restarted.getQueue('brand.crawl'))?.heartbeatSeconds).toBe(QUEUE_HEARTBEAT_SECONDS);
+    expect((await restarted.getQueue('chat.reply'))?.heartbeatSeconds).toBe(QUEUE_HEARTBEAT_SECONDS);
+    await restarted.stop({ graceful: false });
   });
 
   it('accumulates recorded usage into cost_usd', async () => {
