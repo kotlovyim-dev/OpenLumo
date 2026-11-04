@@ -48,4 +48,35 @@ describe('composeOverlay', () => {
     const corner = (450 * info.width + 450) * info.channels;
     expect([data[corner], data[corner + 1], data[corner + 2]]).toEqual([255, 0, 0]);
   });
+
+  it('renders an overlong, emoji and right-to-left headline without throwing', async () => {
+    const headline = `${'Long headline '.repeat(40)} 🎉 مرحبا بالعالم שלום עולם`;
+
+    const result = await composeOverlay(await solid(640, 800), { headline, accentColor: '#6d55f0' });
+
+    const meta = await sharp(result).metadata();
+    expect([meta.width, meta.height]).toEqual([640, 800]);
+  });
+
+
+  it('renders an overlong, emoji and right-to-left headline without throwing', async () => {
+    const headline = `${'Long headline '.repeat(40)} 🎉 مرحبا بالعالم שלום עולם`;
+
+    const result = await composeOverlay(await solid(640, 800), { headline, accentColor: '#6d55f0' });
+
+    const meta = await sharp(result).metadata();
+    expect([meta.width, meta.height]).toEqual([640, 800]);
+  });
+
+  it('fits a tall logo inside the image', async () => {
+    const logo = new Uint8Array(
+      await sharp({ create: { width: 20, height: 400, channels: 3, background: '#ff0000' } })
+        .png()
+        .toBuffer(),
+    );
+
+    const result = await composeOverlay(await solid(300, 200), { headline: '', logo, accentColor: '#6d55f0' });
+
+    expect((await sharp(result).metadata()).height).toBe(200);
+  });
 });

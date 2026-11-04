@@ -25,3 +25,7 @@ export async function measureImage(bytes: Uint8Array): Promise<{ width: number; 
   if (!width || !height) throw new Error('Image has no dimensions');
   return { width, height };
 }
+
+export async function toPng(bytes: Uint8Array): Promise<Uint8Array> {
+  return new Uint8Array(await sharp(bytes).png().toBuffer());
+}

@@ -2,7 +2,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { eq } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import sharp from 'sharp';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   type Config,
   type JobContext,
@@ -18,7 +19,7 @@ import {
   loadConfig,
   saveBrandDna,
 } from '@openlumo/core';
-import { ProviderError } from '@openlumo/providers';
+import { FakeProvider, ProviderError } from '@openlumo/providers';
 import { assets, contentItems, dnaFeedback, itemVersions, users, type Database } from '@openlumo/db';
 import { createTestDatabase } from '@openlumo/db/testing';
 import { createItemGenerateJob } from '../src/jobs/item-generate';
@@ -222,5 +223,55 @@ describe('item.generate', () => {
     const found = await getItemWithCurrentVersion(db, item.id);
     const slides = (found?.version?.copy as { slides: unknown[] }).slides;
     expect(found?.version?.assetIds).toHaveLength(slides.length);
+  });
+
+  it('stores a real PNG when the image model returns a JPEG and no overlay is requested', async () => {
+    const jpeg = new Uint8Array(
+      await sharp({ create: { width: 16, height: 16, channels: 3, background: '#808080' } })
+        .jpeg()
+        .toBuffer(),
+    );
+    const spy = vi
+      .spyOn(FakeProvider.prototype, 'generate')
+      .mockResolvedValue({ bytes: jpeg, mimeType: 'image/jpeg', usage: { inputTokens: 0, outputTokens: 0, costUsd: 0 } });
+    try {
+      const { brand, item } = await itemFor({ withDna: true });
+      await db.update(contentItems).set({ format: 'static_ad' }).where(eq(contentItems.id, item.id));
+      await appendVersion(db, item.id, 1, {
+        copy: { headline: 'h', primaryText: 'p', callToAction: 'c', imageBrief: { prompt: 'a loaf' } },
+        author: 'planner',
+      });
+
+      await job().run({ brandId: brand.id, itemId: item.id, targetVersion: 1 }, context);
+
+      const [asset] = await db.select().from(assets).where(eq(assets.brandId, brand.id));
+      const stored = await createAssetStorage(storageDirectory).read(asset!.storageKey);
+      expect(Array.from(stored.slice(0, 4))).toEqual([0x89, 0x50, 0x4e, 0x47]);
+      expect(asset).toMatchObject({ mimeType: 'image/png', width: 16, height: 16 });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('resumes a carousel after a failed slide without re-rendering finished slides', async () => {
+    const { brand, item } = await itemFor({ withDna: true });
+    await db.update(contentItems).set({ format: 'carousel' }).where(eq(contentItems.id, item.id));
+    const slide = (prompt: string) => ({ title: 't', text: 'x', imageBrief: { prompt } });
+    await appendVersion(db, item.id, 1, {
+      copy: { slides: [slide('one'), slide('two #fail-once'), slide('three')], caption: 'c' },
+      author: 'planner',
+    });
+    const payload = { brandId: brand.id, itemId: item.id, targetVersion: 1 };
+
+    await expect(job().run(payload, context)).rejects.toBeInstanceOf(ProviderError);
+    const partial = await getItemWithCurrentVersion(db, item.id);
+    expect(partial?.version?.assetIds).toHaveLength(1);
+
+    await job().run(payload, context);
+
+    const done = await getItemWithCurrentVersion(db, item.id);
+    expect(done?.version?.assetIds).toHaveLength(3);
+    expect(done?.version?.assetIds[0]).toBe(partial?.version?.assetIds[0]);
+    expect(await db.select().from(assets).where(eq(assets.brandId, brand.id))).toHaveLength(3);
   });
 });

@@ -1,9 +1,11 @@
 import { z } from 'zod';
 import type { ItemFormat } from '../planner/channel-formats';
 
+export const MAX_HEADLINE_LENGTH = 120;
+
 const imageBriefSchema = z.object({
   prompt: z.string().min(1),
-  headlineOverlay: z.string().optional(),
+  headlineOverlay: z.string().max(MAX_HEADLINE_LENGTH).optional(),
 });
 
 const socialPostCopySchema = z.object({

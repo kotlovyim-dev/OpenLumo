@@ -1,5 +1,5 @@
 import type { AspectRatio } from '@openlumo/providers';
-import type { Channel, ItemFormat } from '../planner/channel-formats';
+import type { Channel } from '../planner/channel-formats';
 
 const channelRatios: Partial<Record<Channel, AspectRatio>> = {
   instagram: '4:5',
@@ -8,7 +8,6 @@ const channelRatios: Partial<Record<Channel, AspectRatio>> = {
   email: '16:9',
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function aspectRatioFor(channel: Channel, _format: ItemFormat): AspectRatio {
+export function aspectRatioFor(channel: Channel): AspectRatio {
   return channelRatios[channel] ?? '1:1';
 }

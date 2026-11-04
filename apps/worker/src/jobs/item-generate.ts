@@ -14,8 +14,9 @@ import {
   listOpenFeedback,
   measureImage,
   renderImage,
+  readLogo,
   resolveModels,
-  type BrandDna,
+  toPng,
   type ContentItem,
   type FormatCopy,
   type ItemVersion,
@@ -23,7 +24,6 @@ import {
   type JobPayload,
 } from '@openlumo/core';
 import { assets } from '@openlumo/db';
-import { eq } from 'drizzle-orm';
 import type { WorkerDependencies } from '../worker-dependencies';
 
 type ImageBrief = { prompt: string; headlineOverlay?: string };
@@ -58,13 +58,6 @@ async function writeCopy(
   return appendVersion(db, itemId, targetVersion, { copy, author: 'planner' });
 }
 
-async function loadLogo({ db, storage }: WorkerDependencies, dna: BrandDna): Promise<Uint8Array | undefined> {
-  const { logoAssetId } = dna.visuals;
-  if (!logoAssetId) return undefined;
-  const [logo] = await db.select({ storageKey: assets.storageKey }).from(assets).where(eq(assets.id, logoAssetId));
-  return logo ? storage.read(logo.storageKey) : undefined;
-}
-
 async function writeImages(
   deps: WorkerDependencies,
   brandId: string,
@@ -73,24 +66,24 @@ async function writeImages(
   context: JobContext,
 ): Promise<void> {
   const briefs = imageBriefs(version.copy as FormatCopy);
-  if (briefs.length === 0) return;
+  if (version.assetIds.length >= briefs.length) return;
   const { db, config, storage } = deps;
 
   await context.reportProgress('Rendering image');
   const saved = await getBrandDna(db, brandId);
   if (!saved) throw new BrandNotReadyError(brandId);
   const { image } = await resolveModels(db, config);
-  const logo = await loadLogo(deps, saved.dna);
+  const logo = await readLogo(db, storage, saved.dna);
   const accentColor = saved.dna.visuals.palette[0] ?? DEFAULT_ACCENT_COLOR;
-  const aspectRatio = aspectRatioFor(item.channel, item.format);
+  const aspectRatio = aspectRatioFor(item.channel);
 
-  const assetIds: string[] = [];
-  for (const brief of briefs) {
+  const assetIds = [...version.assetIds];
+  for (const brief of briefs.slice(assetIds.length)) {
     const rendered = await renderImage(image.model, image.modelId, brief.prompt, saved.dna, aspectRatio);
     await context.recordUsage(rendered.usage);
     const bytes = brief.headlineOverlay
       ? await composeOverlay(rendered.bytes, { headline: brief.headlineOverlay, logo, accentColor })
-      : rendered.bytes;
+      : await toPng(rendered.bytes);
     const assetId = crypto.randomUUID();
     const storageKey = `brands/${brandId}/${assetId}.png`;
     await storage.write(storageKey, bytes);
@@ -108,8 +101,8 @@ async function writeImages(
       prompt: brief.prompt,
     });
     assetIds.push(assetId);
+    await attachAssets(db, version.id, assetIds);
   }
-  await attachAssets(db, version.id, assetIds);
 }
 
 async function generateItem(
@@ -125,7 +118,6 @@ async function generateItem(
   const existing = await getVersion(db, itemId, targetVersion);
   const version = existing ?? (await writeCopy(deps, payload, found.item, context));
   if (!version) return;
-  if (existing && (imageBriefs(existing.copy as FormatCopy).length === 0 || existing.assetIds.length > 0)) return;
   await writeImages(deps, payload.brandId, found.item, version, context);
 }
 
