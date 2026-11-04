@@ -21,6 +21,24 @@ describe('dna feedback', () => {
     await drop();
   });
 
+  it('reads DNA stored before competitor records existed', async () => {
+    const brand = await createBrand(db, { name: 'Legacy', createdBy: 'u1' });
+    const legacy = structuredClone(createPartialBrandDna({ name: 'Legacy', palette: [] })) as unknown as {
+      identity: Record<string, unknown>;
+      audience: Record<string, unknown>;
+      competitors: unknown;
+    };
+    delete legacy.identity.features;
+    delete legacy.audience.channels;
+    legacy.competitors = ['Rival'];
+    await db.insert(brandDna).values({ brandId: brand.id, data: legacy });
+
+    const saved = await getBrandDna(db, brand.id);
+
+    expect(saved?.dna.competitors[0]?.name).toBe('Rival');
+    expect(saved?.dna.identity.features).toEqual([]);
+  });
+
   it('returns unmerged notes of the brand newest first, at most 20', async () => {
     const brand = await createBrand(db, { name: 'Acme', createdBy: 'u1' });
     const other = await createBrand(db, { name: 'Other', createdBy: 'u1' });

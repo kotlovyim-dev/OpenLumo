@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeProvider, type TextRequest } from '@openlumo/providers';
 import { brandDnaSchema, createPartialBrandDna, normalisePalette } from '../../src/brand-dna/brand-dna-schema';
 import { synthesizeBrandDna } from '../../src/brand-dna/synthesize-brand-dna';
+import { upgradeStoredDna } from '../../src/brand-dna/upgrade-stored-dna';
 import type { CrawlResult } from '../../src/crawl/crawl-site';
 import { fakeResponses } from '../../src/models/fake-responses';
 import { wrapUntrustedContent } from '../../src/prompts/untrusted-content';
@@ -120,5 +121,29 @@ describe('synthesizeBrandDna', () => {
     const brain = new FakeProvider({ textResponses: [JSON.stringify(validDna)] });
     const { dna } = await synthesizeBrandDna(brain, 'fake/text', crawlWith('text', []), []);
     expect(dna.visuals.palette).toEqual(brandDnaSchema.parse(validDna).visuals.palette);
+  });
+});
+
+describe('upgradeStoredDna', () => {
+  it('turns name-only competitors into records and fills missing lists', () => {
+    const legacy = structuredClone(validDna) as Record<string, unknown> & {
+      identity: Record<string, unknown>;
+      audience: Record<string, unknown>;
+    };
+    delete legacy.identity.features;
+    delete legacy.audience.channels;
+    legacy.competitors = ['Acme Bakery'];
+
+    const upgraded = brandDnaSchema.parse(upgradeStoredDna(legacy));
+
+    expect(upgraded.identity.features).toEqual([]);
+    expect(upgraded.audience.channels).toEqual([]);
+    expect(upgraded.competitors).toEqual([
+      { name: 'Acme Bakery', url: '', positioning: '', strengths: [], weaknesses: [], sourceUrls: [] },
+    ]);
+  });
+
+  it('keeps current DNA as it is', () => {
+    expect(upgradeStoredDna(validDna)).toEqual(validDna);
   });
 });

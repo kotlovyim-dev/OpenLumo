@@ -11,12 +11,14 @@ const sunriseBakeryDna: BrandDna = {
     tagline: 'Fresh bread, baked before the sun is up.',
     offering: 'Handmade bread and pastries baked every morning for the neighbourhood.',
     products: ['Sourdough loaf', 'Butter croissant', 'Weekly bread subscription'],
+    features: ['Baked fresh before 6am', 'Weekly delivery to your door'],
   },
   audience: {
     segments: ['Local families', 'Busy commuters', 'Cafes needing a morning supplier'],
     painPoints: ['Supermarket bread tastes stale', 'No time to shop in the morning'],
     buyingTriggers: ['Weekend breakfast', 'Running low on bread'],
     objections: ['Handmade bread costs more'],
+    channels: ['Neighbourhood Facebook groups', 'Instagram'],
   },
   voice: {
     tone: { formalToCasual: 8, seriousToPlayful: 6, reservedToBold: 4 },

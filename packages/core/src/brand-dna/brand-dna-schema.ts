@@ -17,18 +17,31 @@ export function normalisePalette(palette: string[]): string[] {
 
 const toneScale = z.number().min(0).max(10);
 
+export const competitorSchema = z.object({
+  name: z.string(),
+  url: z.string(),
+  positioning: z.string(),
+  strengths: z.array(z.string()),
+  weaknesses: z.array(z.string()),
+  sourceUrls: z.array(z.string()),
+});
+
+export type Competitor = z.infer<typeof competitorSchema>;
+
 export const brandDnaSchema = z.object({
   identity: z.object({
     name: z.string(),
     tagline: z.string(),
     offering: z.string(),
     products: z.array(z.string()),
+    features: z.array(z.string()),
   }),
   audience: z.object({
     segments: z.array(z.string()),
     painPoints: z.array(z.string()),
     buyingTriggers: z.array(z.string()),
     objections: z.array(z.string()),
+    channels: z.array(z.string()),
   }),
   voice: z.object({
     tone: z.object({
@@ -46,7 +59,7 @@ export const brandDnaSchema = z.object({
     imageStyle: z.string(),
     logoAssetId: z.uuid().optional(),
   }),
-  competitors: z.array(z.string()),
+  competitors: z.array(competitorSchema),
   languages: z.array(z.string()),
 });
 
@@ -58,8 +71,8 @@ export function createPartialBrandDna(parts: {
   logoAssetId?: string;
 }): BrandDna {
   return {
-    identity: { name: parts.name, tagline: '', offering: '', products: [] },
-    audience: { segments: [], painPoints: [], buyingTriggers: [], objections: [] },
+    identity: { name: parts.name, tagline: '', offering: '', products: [], features: [] },
+    audience: { segments: [], painPoints: [], buyingTriggers: [], objections: [], channels: [] },
     voice: {
       tone: { formalToCasual: 5, seriousToPlayful: 5, reservedToBold: 5 },
       dos: [],

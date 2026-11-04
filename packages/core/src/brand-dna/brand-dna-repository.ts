@@ -1,6 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { brandDna, type Database } from '@openlumo/db';
 import { type BrandDna, brandDnaSchema, isHexColour } from './brand-dna-schema';
+import { upgradeStoredDna } from './upgrade-stored-dna';
 
 export async function saveBrandDna(db: Database, brandId: string, dna: BrandDna): Promise<void> {
   await db
@@ -18,7 +19,7 @@ export async function getBrandDna(
 ): Promise<{ dna: BrandDna; version: number } | null> {
   const [row] = await db.select().from(brandDna).where(eq(brandDna.brandId, brandId));
   if (!row) return null;
-  return { dna: brandDnaSchema.parse(dropInvalidPalette(row.data)), version: row.version };
+  return { dna: brandDnaSchema.parse(dropInvalidPalette(upgradeStoredDna(row.data))), version: row.version };
 }
 
 export async function saveBrandDnaIfVersion(

@@ -126,7 +126,22 @@ export function DnaForm({ brandId, initial, canEdit }: { brandId: string; initia
         {text('visuals.imageStyle', 'Image style', visuals.imageStyle, (imageStyle) => setDna({ ...dna, visuals: { ...visuals, imageStyle } }), true)}
       </Section>
       <Section title="Market">
-        {chips('competitors', 'Competitors', dna.competitors, (competitors) => setDna({ ...dna, competitors }))}
+        {chips('competitors', 'Competitors', dna.competitors.map((competitor) => competitor.name), (names) =>
+          setDna({
+            ...dna,
+            competitors: names.map(
+              (name) =>
+                dna.competitors.find((competitor) => competitor.name === name) ?? {
+                  name,
+                  url: '',
+                  positioning: '',
+                  strengths: [],
+                  weaknesses: [],
+                  sourceUrls: [],
+                },
+            ),
+          }),
+        )}
         {chips('languages', 'Languages', dna.languages, (languages) => setDna({ ...dna, languages }))}
       </Section>
       {canEdit && (
