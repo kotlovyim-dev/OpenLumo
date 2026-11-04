@@ -21,7 +21,10 @@ export const jobPayloads = {
   }),
   'plan.top-up': brandPayload,
   'item.generate': itemPayload.extend({ instruction: z.string().optional() }),
-  'item.regenerate': itemPayload,
+  'item.regenerate': itemPayload.extend({
+    scope: z.enum(['copy', 'image', 'all']),
+    feedback: z.string().optional(),
+  }),
   'export.bundle': brandPayload,
   'chat.reply': brandPayload,
 } as const satisfies Record<JobName, z.ZodType>;

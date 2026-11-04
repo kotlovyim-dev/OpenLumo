@@ -131,6 +131,7 @@ const blogPostCopy: BlogPostCopy = {
 
 export const fakeResponses: Record<string, (request: TextRequest) => unknown> = {
   brand_dna: () => sunriseBakeryDna,
+  merged_brand_dna: () => sunriseBakeryDna,
   strategy: strategyFor,
   content_plan: contentPlanFor,
   copy_social_post: socialPostCopy,

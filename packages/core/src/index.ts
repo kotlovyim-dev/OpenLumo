@@ -32,3 +32,4 @@ export * from './planner/create-strategy';
 export * from './planner/plan-schema';
 export * from './planner/plan-content';
 export * from './planner/brand-not-ready-error';
+export * from './workspace/request-regeneration';

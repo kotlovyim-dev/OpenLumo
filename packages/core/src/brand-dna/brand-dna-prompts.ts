@@ -1,5 +1,6 @@
 import type { Message } from '@openlumo/providers';
 import type { CrawlResult } from '../crawl/crawl-site';
+import type { BrandDna } from './brand-dna-schema';
 import { untrustedContentRule, wrapUntrustedContent } from '../prompts/untrusted-content';
 
 const PAGE_TEXT_LIMIT = 3000;
@@ -35,5 +36,20 @@ export function buildBrandDnaMessages(crawl: CrawlResult, feedback: string[]): M
   return [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: sections.join('\n\n') },
+  ];
+}
+
+export function buildMergeFeedbackMessages(dna: BrandDna, notes: string[]): Message[] {
+  const system = [
+    'You are a brand strategist. Update an existing Brand DNA object so it reflects feedback from the brand owner.',
+    'Return the complete updated Brand DNA object. Change only what the feedback implies and keep every other field as it is.',
+  ].join('\n');
+  const user = [
+    `Current Brand DNA:\n${JSON.stringify(dna)}`,
+    `Feedback from the brand owner:\n${notes.map((note) => `- ${note}`).join('\n')}`,
+  ].join('\n\n');
+  return [
+    { role: 'system', content: system },
+    { role: 'user', content: user },
   ];
 }

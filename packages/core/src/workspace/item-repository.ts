@@ -4,7 +4,7 @@ import type { FormatCopy } from '../studio/format-schemas';
 
 export type ContentItem = typeof contentItems.$inferSelect;
 export type ItemVersion = typeof itemVersions.$inferSelect;
-export type NewVersion = { copy: FormatCopy; author: ItemVersion['author'] };
+export type NewVersion = { copy: FormatCopy; author: ItemVersion['author']; feedback?: string };
 
 export class ItemNotFoundError extends Error {
   readonly retryable = false;
