@@ -141,4 +141,9 @@ export const fakeResponses: Record<string, (request: TextRequest) => unknown> = 
   copy_blog_post: () => blogPostCopy,
 };
 
+export function fakeChatReply(request: TextRequest): string {
+  const question = request.messages.findLast((message) => message.role === 'user')?.content ?? '';
+  return `Lumo here. You asked: "${question}". Lead with freshness and post early in the morning.`;
+}
+
 export const defaultFakeReply = 'ok';

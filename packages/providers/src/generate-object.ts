@@ -12,7 +12,7 @@ function stripCodeFence(text: string): string {
   return (match?.[1] ?? text).trim();
 }
 
-function addUsage(a: Usage, b: Usage): Usage {
+export function addUsage(a: Usage, b: Usage): Usage {
   return {
     inputTokens: a.inputTokens + b.inputTokens,
     outputTokens: a.outputTokens + b.outputTokens,

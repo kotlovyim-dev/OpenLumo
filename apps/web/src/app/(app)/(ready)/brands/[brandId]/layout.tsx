@@ -1,4 +1,6 @@
 import { requireBrandAccessOrNotFound } from '@/features/brands/brand-access';
+import { ChatPanel } from '@/features/chat/chat-panel';
+import { MAX_CHAT_MESSAGE_LENGTH } from '@/features/chat/chat-service';
 import { getServerContext } from '@/lib/server-context';
 
 export default async function BrandLayout({
@@ -10,6 +12,16 @@ export default async function BrandLayout({
 }) {
   const { brandId } = await params;
   const { db, user } = await getServerContext();
-  await requireBrandAccessOrNotFound(db, user.id, brandId, 'viewer');
-  return children;
+  const membership = await requireBrandAccessOrNotFound(db, user.id, brandId, 'viewer');
+  return (
+    <>
+      {children}
+      <ChatPanel
+        key={brandId}
+        brandId={brandId}
+        canSend={membership.role !== 'viewer'}
+        maxLength={MAX_CHAT_MESSAGE_LENGTH}
+      />
+    </>
+  );
 }

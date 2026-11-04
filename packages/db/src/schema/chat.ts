@@ -1,4 +1,4 @@
-import { jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { type AnyPgColumn, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { users } from './auth';
 import { brands } from './brands';
 
@@ -13,5 +13,8 @@ export const chatMessages = pgTable('chat_messages', {
   role: text('role', { enum: ['user', 'assistant'] }).notNull(),
   content: text('content').notNull(),
   toolCalls: jsonb('tool_calls'),
+  replyToId: uuid('reply_to_id')
+    .unique()
+    .references((): AnyPgColumn => chatMessages.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

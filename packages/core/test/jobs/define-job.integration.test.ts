@@ -188,7 +188,7 @@ describe('job runtime', { timeout: 30_000 }, () => {
       config,
     );
 
-    const runId = await enqueue(boss, db, 'chat.reply', { brandId });
+    const runId = await enqueue(boss, db, 'chat.reply', { brandId, messageId: randomUUID() });
     const run = await waitForRun(db, runId, 'succeeded');
 
     expect(run.costUsd).toBeCloseTo(0.75, 6);
@@ -246,7 +246,7 @@ describe('job runtime', { timeout: 30_000 }, () => {
   it('tracks a job sent without enqueue, such as a scheduled one', async () => {
     await startWorker(boss, db, [defineJob('chat.reply', async () => {})], config);
 
-    const jobId = await boss.send('chat.reply', { brandId });
+    const jobId = await boss.send('chat.reply', { brandId, messageId: randomUUID() });
     const run = await waitForRun(db, jobId!, 'succeeded');
 
     expect(run).toMatchObject({ id: jobId, type: 'chat.reply', brandId });

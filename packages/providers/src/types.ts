@@ -2,6 +2,7 @@ export type Message = {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
   toolCallId?: string;
+  toolCalls?: ToolCall[];
 };
 
 export type ToolDefinition = { name: string; description: string; parameters: object };

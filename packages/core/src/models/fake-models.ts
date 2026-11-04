@@ -1,5 +1,5 @@
 import { FakeProvider, ProviderError, type ImageModel } from '@openlumo/providers';
-import { defaultFakeReply, fakeResponses } from './fake-responses';
+import { defaultFakeReply, fakeChatReply, fakeResponses } from './fake-responses';
 import type { ResolvedModels } from './registry';
 
 const failedOncePrompts = new Set<string>();
@@ -8,7 +8,8 @@ function createFakeBrain(): FakeProvider {
   return new FakeProvider({
     respond: (request) => {
       const fixture = fakeResponses[request.jsonSchema?.name ?? ''];
-      return fixture ? JSON.stringify(fixture(request)) : defaultFakeReply;
+      if (fixture) return JSON.stringify(fixture(request));
+      return request.tools ? fakeChatReply(request) : defaultFakeReply;
     },
   });
 }

@@ -10,9 +10,16 @@ type ChatResponse = {
   usage?: WireUsage;
 };
 
-function toWireMessage(message: Message) {
-  const { toolCallId, ...rest } = message;
-  return toolCallId === undefined ? rest : { ...rest, tool_call_id: toolCallId };
+function toWireToolCall(call: ToolCall) {
+  return { id: call.id, type: 'function', function: { name: call.name, arguments: JSON.stringify(call.arguments) } };
+}
+
+function toWireMessage({ toolCallId, toolCalls, ...rest }: Message) {
+  return {
+    ...rest,
+    ...(toolCallId !== undefined && { tool_call_id: toolCallId }),
+    ...(toolCalls !== undefined && { tool_calls: toolCalls.map(toWireToolCall) }),
+  };
 }
 
 function parseToolCall(raw: WireToolCall): ToolCall {

@@ -42,3 +42,6 @@ export * from './brands/brand-repository';
 export * from './planner/planner-repository';
 export * from './export/export-repository';
 export * from './brands/require-brand-access';
+export * from './chat/chat-tools';
+export * from './chat/reply-to-chat';
+export * from './chat/chat-repository';

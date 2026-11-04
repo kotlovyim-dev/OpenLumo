@@ -96,6 +96,25 @@ describe('OpenRouter language model', () => {
     expect(calls[0]?.body.messages).toEqual([{ role: 'tool', content: 'r', tool_call_id: 'c1' }]);
   });
 
+  it('replays assistant tool calls as function calls with JSON string arguments', async () => {
+    const { fetchImplementation, calls } = stubFetch(() => jsonResponse(textCompletion));
+    await createOpenRouter('k', fetchImplementation).complete({
+      model: 'm',
+      messages: [
+        { role: 'assistant', content: '', toolCalls: [{ id: 'c1', name: 'lookup', arguments: { q: 'x' } }] },
+        { role: 'tool', content: 'found', toolCallId: 'c1' },
+      ],
+    });
+    expect(calls[0]?.body.messages).toEqual([
+      {
+        role: 'assistant',
+        content: '',
+        tool_calls: [{ id: 'c1', type: 'function', function: { name: 'lookup', arguments: '{"q":"x"}' } }],
+      },
+      { role: 'tool', content: 'found', tool_call_id: 'c1' },
+    ]);
+  });
+
   it('throws invalid_output when tool call arguments are not JSON', async () => {
     const { fetchImplementation } = stubFetch(() =>
       jsonResponse({

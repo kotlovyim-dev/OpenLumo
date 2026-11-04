@@ -26,7 +26,7 @@ export const jobPayloads = {
     feedback: z.string().optional(),
   }),
   'export.bundle': brandPayload.extend({ itemIds: z.array(z.uuid()).min(1).max(200) }),
-  'chat.reply': brandPayload,
+  'chat.reply': brandPayload.extend({ messageId: z.uuid() }),
 } as const satisfies Record<JobName, z.ZodType>;
 
 export type JobPayload<N extends JobName> = z.infer<(typeof jobPayloads)[N]>;
