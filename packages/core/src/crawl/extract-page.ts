@@ -5,6 +5,7 @@ export type ExtractedPage = {
   url: string;
   title: string;
   description: string;
+  metadata: string;
   text: string;
   links: string[];
   imageUrls: string[];
@@ -29,6 +30,35 @@ function resolveUrl(value: string | undefined, base: string): string | undefined
 
 function unique(values: (string | undefined)[]): string[] {
   return [...new Set(values.filter((value): value is string => value !== undefined))];
+}
+
+function withoutLinkedDataIds(key: string, value: unknown): unknown {
+  return key === '@context' || key === '@id' ? undefined : value;
+}
+
+function readStructuredData($: cheerio.CheerioAPI): string[] {
+  return $('script[type="application/ld+json"]')
+    .map((_, element) => {
+      try {
+        return JSON.stringify(JSON.parse($(element).text()), withoutLinkedDataIds);
+      } catch {
+        return undefined;
+      }
+    })
+    .get();
+}
+
+function describeHead($: cheerio.CheerioAPI, description: string, openGraph: Record<string, string>): string {
+  const metaContent = (name: string) => $(`meta[name="${name}"]`).attr('content')?.trim() || undefined;
+  const socialDescriptions = unique([openGraph['og:description']?.trim(), metaContent('twitter:description')]).filter(
+    (text) => text !== '' && text !== description,
+  );
+  const keywords = metaContent('keywords');
+  return [
+    ...socialDescriptions.map((text) => `Social description: ${text}`),
+    ...(keywords ? [`Keywords: ${keywords}`] : []),
+    ...readStructuredData($).map((json) => `Structured data: ${json}`),
+  ].join('\n');
 }
 
 export function extractPage(html: string, pageUrl: string): ExtractedPage {
@@ -74,13 +104,17 @@ export function extractPage(html: string, pageUrl: string): ExtractedPage {
     .get()
     .join('\n');
 
+  const description = $('meta[name="description"]').attr('content')?.trim() ?? '';
+  const metadata = describeHead($, description, openGraph);
+
   $('script, style, nav, footer').remove();
   $(BLOCK_ELEMENTS).append(' ');
 
   return {
     url: pageUrl,
     title: $('title').first().text().trim(),
-    description: $('meta[name="description"]').attr('content')?.trim() ?? '',
+    description,
+    metadata,
     text: $('body').text().replace(/\s+/g, ' ').trim(),
     links,
     imageUrls: unique(images.map((image) => image.url)),

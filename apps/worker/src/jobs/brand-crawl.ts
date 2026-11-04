@@ -27,7 +27,10 @@ export function createBrandCrawlJob(deps: WorkerDependencies) {
       );
       await saveCrawlSources(db, storage, brandId, crawl);
 
-      const totalText = crawl.pages.reduce((sum, page) => sum + page.text.length, 0);
+      const totalText = crawl.pages.reduce(
+        (sum, page) => sum + page.text.length + page.description.length + page.metadata.length,
+        0,
+      );
       if (totalText < THIN_SITE_CHARACTERS) {
         await fallBackToManualInput(db, brandId);
         return;

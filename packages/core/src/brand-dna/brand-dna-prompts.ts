@@ -5,11 +5,14 @@ import { untrustedContentRule, wrapUntrustedContent } from '../prompts/untrusted
 
 const PAGE_TEXT_LIMIT = 3000;
 const PAGE_META_LIMIT = 300;
+const PAGE_METADATA_LIMIT = 2000;
 const TOTAL_PAGES_LIMIT = 20000;
 const RESEARCH_BRIEF_LIMIT = 12000;
 
 const systemPrompt = [
   'You are a brand strategist. Read the pages of a business website and describe its brand as a structured Brand DNA object.',
+  'Some sites render their content with JavaScript, so a page may carry little body text. Then rely on its title, description and metadata, which the business wrote about itself, and on the web research.',
+  'Use the name the business trades under, without its tagline or the rest of the page title. Take the tagline from the words the business uses for itself, such as its headline or the slogan in its title.',
   'Fill every field the pages support. Tone scales run from 0 to 10. Use hex colours for the palette. Use BCP 47 codes for languages.',
   'List product features as concrete capabilities, and audience channels as the places the audience spends time, such as platforms, communities and publications.',
   'Describe competitors only from what the pages or the web research state, with their website when known.',
@@ -28,6 +31,7 @@ export function buildBrandDnaMessages(crawl: CrawlResult, feedback: string[], re
       [
         `Title: ${page.title.slice(0, PAGE_META_LIMIT)}`,
         `Description: ${page.description.slice(0, PAGE_META_LIMIT)}`,
+        ...(page.metadata ? [`Metadata:\n${page.metadata.slice(0, PAGE_METADATA_LIMIT)}`] : []),
         page.text.slice(0, PAGE_TEXT_LIMIT),
       ].join('\n'),
     );

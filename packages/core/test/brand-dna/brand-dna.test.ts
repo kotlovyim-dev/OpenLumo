@@ -23,6 +23,7 @@ function crawlWith(text: string, palette: string[]): CrawlResult {
         openGraph: {},
         stylesheetUrls: [],
         inlineCss: '',
+        metadata: '',
       },
     ],
   };
@@ -86,6 +87,18 @@ describe('synthesizeBrandDna', () => {
     expect(user).toContain('<untrusted_content label="page https://shop.example/">');
     expect(user).toContain('We sell lanterns.');
     expect(user).toContain('less corporate');
+  });
+
+  it('sends page metadata so sites rendered with JavaScript still describe themselves', async () => {
+    const brain = new FakeProvider({ textResponses: [JSON.stringify(validDna)] });
+    const crawl = crawlWith('', []);
+    crawl.pages[0]!.metadata = 'Keywords: lanterns, camping';
+    await synthesizeBrandDna(brain, 'fake/text', crawl, []);
+    const request = brain.requests[0] as TextRequest;
+    const user = request.messages.find((message) => message.role === 'user')!.content;
+    expect(user).toContain('Metadata:\nKeywords: lanterns, camping');
+    const system = request.messages.find((message) => message.role === 'system')!.content;
+    expect(system).toContain('rely on its title, description and metadata');
   });
 
   it('includes the web research brief as untrusted content', async () => {

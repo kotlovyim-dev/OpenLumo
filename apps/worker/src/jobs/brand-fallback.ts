@@ -8,6 +8,10 @@ import {
 } from '@openlumo/core';
 import type { Database } from '@openlumo/db';
 
+function nameFromTitle(title: string): string {
+  return title.split(/\s+[|—–:·-]\s+/)[0]!.trim();
+}
+
 export async function fallBackToManualInput(db: Database, brandId: string): Promise<void> {
   if (!(await getBrandDna(db, brandId))) {
     const brand = await findBrand(db, brandId);
@@ -15,7 +19,7 @@ export async function fallBackToManualInput(db: Database, brandId: string): Prom
     const pages = crawl?.pages ?? [];
     const name =
       pages.find((page) => page.openGraph['og:site_name'])?.openGraph['og:site_name'] ||
-      pages.find((page) => page.title)?.title ||
+      nameFromTitle(pages.find((page) => page.title)?.title ?? '') ||
       brand?.name ||
       '';
     await saveBrandDna(

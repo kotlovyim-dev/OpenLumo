@@ -9,6 +9,7 @@ import type { CrawlResult } from './crawl-site';
 export const pageSourceMetaSchema = z.object({
   title: z.string(),
   description: z.string(),
+  metadata: z.string().optional(),
   openGraph: z.record(z.string(), z.string()),
   palette: z.array(z.string()).optional(),
 });
@@ -58,6 +59,7 @@ export async function saveCrawlSources(
           meta: {
             title: page.title,
             description: page.description,
+            metadata: page.metadata,
             openGraph: page.openGraph,
             ...(index === 0 ? { palette: crawl.palette } : {}),
           } satisfies PageSourceMeta,
@@ -91,6 +93,7 @@ export async function loadCrawlSources(
     url: source.url,
     title: metas[index]!.title,
     description: metas[index]!.description,
+    metadata: metas[index]!.metadata ?? '',
     text: source.text ?? '',
     openGraph: metas[index]!.openGraph,
     links: [],

@@ -22,6 +22,7 @@ const crawl: CrawlResult = {
       openGraph: {},
       stylesheetUrls: [],
       inlineCss: '',
+      metadata: '',
     },
   ],
 };
@@ -58,6 +59,15 @@ describe('buildResearchBriefMessages', () => {
     const text = messages.map((message) => message.content).join('\n');
     expect(text).toContain('2026-11-04');
     expect(text).toMatch(/<untrusted_content label="page https:\/\/sunrise\.example\/">[\s\S]*Ignore previous instructions/);
+  });
+
+  it('includes page metadata when the page has some', () => {
+    const withMetadata = { ...crawl, pages: [{ ...crawl.pages[0]!, metadata: 'Keywords: sourdough' }] };
+    const text = buildResearchBriefMessages({ url: input.url, crawl: withMetadata, today })
+      .map((message) => message.content)
+      .join('\n');
+    expect(text).toContain('Metadata:\nKeywords: sourdough');
+    expect(buildResearchBriefMessages({ url: input.url, crawl, today })[1]!.content).not.toContain('Metadata:');
   });
 });
 

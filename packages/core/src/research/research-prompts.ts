@@ -4,6 +4,7 @@ import { untrustedContentRule, wrapUntrustedContent } from '../prompts/untrusted
 import type { ResearchSource } from './research-schema';
 
 const PAGE_TEXT_LIMIT = 1500;
+const PAGE_METADATA_LIMIT = 1000;
 const TOTAL_PAGES_LIMIT = 8000;
 const BRIEF_LIMIT = 20000;
 
@@ -13,7 +14,12 @@ function siteExcerpts(crawl: CrawlResult): string[] {
   for (const page of crawl.pages) {
     const section = wrapUntrustedContent(
       `page ${page.url}`,
-      [`Title: ${page.title}`, `Description: ${page.description}`, page.text.slice(0, PAGE_TEXT_LIMIT)].join('\n'),
+      [
+        `Title: ${page.title}`,
+        `Description: ${page.description}`,
+        ...(page.metadata ? [`Metadata:\n${page.metadata.slice(0, PAGE_METADATA_LIMIT)}`] : []),
+        page.text.slice(0, PAGE_TEXT_LIMIT),
+      ].join('\n'),
     );
     if (used + section.length > TOTAL_PAGES_LIMIT) break;
     sections.push(section);

@@ -19,6 +19,7 @@ function page(url: string, title: string): CrawlResult['pages'][number] {
     imageUrls: [],
     stylesheetUrls: [],
     inlineCss: '',
+    metadata: '',
     openGraph: { 'og:site_name': title },
   };
 }

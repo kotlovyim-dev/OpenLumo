@@ -47,6 +47,29 @@ describe('extractPage', () => {
     expect(links).toEqual(['https://x.test/']);
   });
 
+  it('describes the head of an app shell that renders its content with JavaScript', () => {
+    const shell = extractPage(
+      `<head>
+<meta name="description" content="Lessons for tutors">
+<meta property="og:description" content="Idea in. Lesson out.">
+<meta name="twitter:description" content="Lessons for tutors">
+<meta name="keywords" content="tutors, lessons">
+<script type="application/ld+json">{"@context":"https://schema.org","@id":"#app","@type":"WebApplication","name":"Leryo","offers":{"price":"0"}}</script>
+<script type="application/ld+json">{ not json</script>
+</head><body><div id="root"></div></body>`,
+      'https://x.test/',
+    );
+    expect(shell.text).toBe('');
+    expect(shell.metadata).toBe(
+      [
+        'Social description: Idea in. Lesson out.',
+        'Keywords: tutors, lessons',
+        'Structured data: {"@type":"WebApplication","name":"Leryo","offers":{"price":"0"}}',
+      ].join('\n'),
+    );
+    expect(page.metadata).toBe('');
+  });
+
   it('prefers an img with logo over icon and og:image', () => {
     expect(page.logoUrl).toBe('https://acme.test/brand.png');
   });

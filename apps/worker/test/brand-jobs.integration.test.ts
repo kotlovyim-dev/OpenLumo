@@ -17,6 +17,7 @@ import {
   getBrandDna,
   getResearch,
   listOpenFeedbackNotes,
+  loadCrawlSources,
   setBrandStatus,
   loadConfig,
 } from '@openlumo/core';
@@ -39,6 +40,12 @@ const types: Record<string, string> = {
 };
 
 const thinPage = `<html><head><title>Acme Tools</title><meta property="og:site_name" content="Acme Tools"><style>a { color: #ff5a1f; } b { color: #ff5a1f; }</style></head><body><div id=root></div></body></html>`;
+const titledThinPage = `<html><head><title>Acme Tools — Hand tools | Built to last</title></head><body><div id=root></div></body></html>`;
+const appShellPage = `<html><head><title>Leryo — Lessons for tutors</title>
+<meta name="description" content="AI-native workspace for private English tutors. Create interactive lessons from prompts, PDFs, or photos in seconds.">
+<meta name="keywords" content="english tutors, ai lesson planner, interactive lessons, tutoring software">
+<script type="application/ld+json">{"@type":"WebApplication","name":"Leryo","offers":{"price":"0","description":"Free plan with up to 5 lessons"}}</script>
+</head><body><div id=root></div></body></html>`;
 
 function startServer(handler: http.RequestListener): Promise<{ origin: string; server: http.Server }> {
   const server = http.createServer(handler);
@@ -96,9 +103,11 @@ describe('brand jobs', () => {
       }
     });
     const thin = await startServer((req, res) => {
-      if ((req.url ?? '/') === '/') {
+      const pages: Record<string, string> = { '/': thinPage, '/titled': titledThinPage, '/app': appShellPage };
+      const page = pages[req.url ?? '/'];
+      if (page) {
         res.writeHead(200, { 'content-type': 'text/html' });
-        res.end(thinPage);
+        res.end(page);
       } else res.writeHead(404).end();
     });
     servers.push(fixture.server, thin.server);
@@ -178,6 +187,26 @@ describe('brand jobs', () => {
     const saved = await getBrandDna(db, brand.id);
     expect(saved?.dna.identity.name).toBe('Acme Tools');
     expect(saved?.dna.visuals.palette).toContain('#ff5a1f');
+  });
+
+  it('names a thin site from its page title without the tagline', async () => {
+    const brand = await createBrand(db, { url: `${thinOrigin}/titled`, createdBy: 'u1' });
+
+    await createBrandCrawlJob(deps()).run({ brandId: brand.id }, context);
+
+    expect((await getBrandDna(db, brand.id))?.dna.identity.name).toBe('Acme Tools');
+  });
+
+  it('researches an app shell site whose head describes the business', async () => {
+    enqueued.length = 0;
+    const brand = await createBrand(db, { url: `${thinOrigin}/app`, createdBy: 'u1' });
+
+    await createBrandCrawlJob(deps()).run({ brandId: brand.id }, context);
+
+    expect(enqueued).toEqual([{ name: 'brand.research', payload: { brandId: brand.id } }]);
+    const [page] = (await loadCrawlSources(db, brand.id))!.pages;
+    expect(page!.text).toBe('');
+    expect(page!.metadata).toContain('Free plan with up to 5 lessons');
   });
 
   it('saves a partial DNA and needs_input when the URL is unreachable', async () => {
