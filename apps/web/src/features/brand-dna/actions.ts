@@ -19,6 +19,10 @@ export async function addFeedbackAction(brandId: string, note: string) {
   return run((context) => service.addFeedback(context, brandId, note));
 }
 
+export async function refreshResearchAction(brandId: string) {
+  return run((context) => service.requestResearchRefresh(context, brandId));
+}
+
 export async function mergeFeedbackAction(brandId: string) {
   return run((context) => service.requestFeedbackMerge(context, brandId));
 }

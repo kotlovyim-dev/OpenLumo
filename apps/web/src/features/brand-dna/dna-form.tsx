@@ -6,6 +6,7 @@ import type { BrandDna } from '@openlumo/core';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { updateBrandDna } from './actions';
+import { CompetitorsField } from './competitors-field';
 import { ChipsField, PaletteField, TextField, ToneField } from './dna-fields';
 
 const tones = [
@@ -80,12 +81,14 @@ export function DnaForm({ brandId, initial, canEdit }: { brandId: string; initia
         {text('identity.tagline', 'Tagline', identity.tagline, (tagline) => setDna({ ...dna, identity: { ...identity, tagline } }))}
         {text('identity.offering', 'What you offer', identity.offering, (offering) => setDna({ ...dna, identity: { ...identity, offering } }), true)}
         {chips('identity.products', 'Products', identity.products, (products) => setDna({ ...dna, identity: { ...identity, products } }))}
+        {chips('identity.features', 'Features', identity.features, (features) => setDna({ ...dna, identity: { ...identity, features } }))}
       </Section>
       <Section title="Audience">
         {chips('audience.segments', 'Segments', audience.segments, (segments) => setDna({ ...dna, audience: { ...audience, segments } }))}
         {chips('audience.painPoints', 'Pain points', audience.painPoints, (painPoints) => setDna({ ...dna, audience: { ...audience, painPoints } }))}
         {chips('audience.buyingTriggers', 'Buying triggers', audience.buyingTriggers, (buyingTriggers) => setDna({ ...dna, audience: { ...audience, buyingTriggers } }))}
         {chips('audience.objections', 'Objections', audience.objections, (objections) => setDna({ ...dna, audience: { ...audience, objections } }))}
+        {chips('audience.channels', 'Where they spend time', audience.channels, (channels) => setDna({ ...dna, audience: { ...audience, channels } }))}
       </Section>
       <Section title="Voice">
         {tones.map(({ key, label, low, high }) => (
@@ -126,22 +129,12 @@ export function DnaForm({ brandId, initial, canEdit }: { brandId: string; initia
         {text('visuals.imageStyle', 'Image style', visuals.imageStyle, (imageStyle) => setDna({ ...dna, visuals: { ...visuals, imageStyle } }), true)}
       </Section>
       <Section title="Market">
-        {chips('competitors', 'Competitors', dna.competitors.map((competitor) => competitor.name), (names) =>
-          setDna({
-            ...dna,
-            competitors: names.map(
-              (name) =>
-                dna.competitors.find((competitor) => competitor.name === name) ?? {
-                  name,
-                  url: '',
-                  positioning: '',
-                  strengths: [],
-                  weaknesses: [],
-                  sourceUrls: [],
-                },
-            ),
-          }),
-        )}
+        <CompetitorsField
+          values={dna.competitors}
+          onChange={(competitors) => setDna({ ...dna, competitors })}
+          errorFor={errorFor}
+          readOnly={readOnly}
+        />
         {chips('languages', 'Languages', dna.languages, (languages) => setDna({ ...dna, languages }))}
       </Section>
       {canEdit && (

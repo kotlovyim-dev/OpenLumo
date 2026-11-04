@@ -5,8 +5,10 @@ import {
   enqueue,
   findBrand,
   getBrandDna,
+  getResearch,
   normalisePalette,
   saveBrandDna,
+  setBrandName,
   setBrandStatus,
   type Queue,
 } from '@openlumo/core';
@@ -37,6 +39,8 @@ export async function updateBrandDna(context: DnaContext, brandId: string, dna: 
       logoAssetId: stored?.dna.visuals.logoAssetId,
     },
   });
+  const name = parsed.data.identity.name.trim();
+  if (name && name !== brand.name) await setBrandName(context.db, brandId, name);
   if (brand.status === 'needs_input') await setBrandStatus(context.db, brandId, 'ready');
   return { ok: true };
 }
@@ -46,6 +50,22 @@ export async function addFeedback(context: DnaContext, brandId: string, note: st
   const parsed = noteSchema.safeParse(note);
   if (!parsed.success) return { ok: false, error: 'invalid_input', fieldErrors: { note: 'Write a note up to 2000 characters.' } };
   await addDnaFeedback(context.db, brandId, parsed.data);
+  return { ok: true };
+}
+
+export async function requestResearchRefresh(context: DnaContext, brandId: string): Promise<DnaResult> {
+  if (!(await findBrandAccess(context.db, context.user.id, brandId, 'editor'))) return { ok: false, error: 'forbidden' };
+  const brand = await findBrand(context.db, brandId);
+  if (!brand) return { ok: false, error: 'not_found' };
+  if (!brand.url) return { ok: false, error: 'invalid_input' };
+  const research = await getResearch(context.db, brandId);
+  await enqueue(
+    context.boss,
+    context.db,
+    'brand.research',
+    { brandId, refresh: true },
+    { idempotencyKey: `research-refresh:${brandId}:${research?.attemptedAt.toISOString() ?? 'never'}` },
+  );
   return { ok: true };
 }
 

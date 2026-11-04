@@ -7,12 +7,18 @@ import {
   createQueue,
   getBrandDna,
   listOpenFeedbackNotes,
+  recordFailedResearch,
   saveBrandDna,
   type Queue,
 } from '@openlumo/core';
 import { brands, contentItems, jobRuns, users } from '@openlumo/db';
 import { createTestDatabase } from '@openlumo/db/testing';
-import { addFeedback, requestFeedbackMerge, updateBrandDna } from '../src/features/brand-dna/dna-service';
+import {
+  addFeedback,
+  requestFeedbackMerge,
+  requestResearchRefresh,
+  updateBrandDna,
+} from '../src/features/brand-dna/dna-service';
 import { createStrategyForBrand, planMore } from '../src/features/strategy/strategy-service';
 
 describe('brand dna and strategy actions', () => {
@@ -99,6 +105,35 @@ describe('brand dna and strategy actions', () => {
     await saveBrandDna(database.db, brandId, validDna());
     await requestFeedbackMerge(context(owner), brandId);
     expect(await runsOf('brand.synthesize-dna')).toHaveLength(2);
+  });
+
+  it('queues one research refresh per attempt for editors of brands with a website', async () => {
+    const site = await createBrand(database.db, { url: 'https://sunrise.example', createdBy: 'owner' });
+    await addBrandMember(database.db, site.id, 'viewer', 'viewer');
+    const refreshRuns = () =>
+      database.db
+        .select()
+        .from(jobRuns)
+        .then((rows) => rows.filter((run) => run.brandId === site.id && run.type === 'brand.research'));
+
+    expect(await requestResearchRefresh(context(viewer), site.id)).toEqual({ ok: false, error: 'forbidden' });
+    expect(await requestResearchRefresh(context(owner), brandId)).toEqual({ ok: false, error: 'invalid_input' });
+    expect(await requestResearchRefresh(context(owner), site.id)).toEqual({ ok: true });
+    expect(await requestResearchRefresh(context(owner), site.id)).toEqual({ ok: true });
+    expect(await refreshRuns()).toHaveLength(1);
+
+    await recordFailedResearch(database.db, site.id);
+    await requestResearchRefresh(context(owner), site.id);
+    expect(await refreshRuns()).toHaveLength(2);
+  });
+
+  it('keeps the brand name in step with the saved DNA name', async () => {
+    const brand = await createBrand(database.db, { url: 'https://rename.example', createdBy: 'owner' });
+
+    await updateBrandDna(context(owner), brand.id, createPartialBrandDna({ name: '  Rename Co  ', palette: [] }));
+
+    const [renamed] = await database.db.select().from(brands).where(eq(brands.id, brand.id));
+    expect(renamed?.name).toBe('Rename Co');
   });
 
   it('validates and enqueues strategy creation for editors only', async () => {

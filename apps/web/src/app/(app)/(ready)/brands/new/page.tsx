@@ -9,7 +9,7 @@ export default async function Page() {
   return (
     <div>
       <h1 className="text-2xl font-bold tracking-tight">Create a brand</h1>
-      <p className="mb-6 mt-2 text-muted">Tell Lumo who you are. You can refine everything afterwards.</p>
+      <p className="mb-6 mt-2 text-muted">Paste your website and Lumo does the research. You can refine everything afterwards.</p>
       <NewBrandForm />
     </div>
   );
