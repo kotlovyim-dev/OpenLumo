@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
   agentRules: false,
   output: 'standalone',
   outputFileTracingRoot: fileURLToPath(new URL('../..', import.meta.url)),
+  outputFileTracingIncludes: { '/**': ['../../node_modules/.pnpm/@img+sharp-*/**/*.dll'] },
   transpilePackages: ['@openlumo/core', '@openlumo/db'],
   serverExternalPackages: ['pg', 'sharp'],
 };

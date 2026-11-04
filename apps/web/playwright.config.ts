@@ -14,7 +14,7 @@ databaseUrl.pathname = '/openlumo_e2e';
 
 const webPort = 3200;
 const fixtureSitePort = 4100;
-const baseURL = `http://localhost:${webPort}`;
+const baseURL = `http://127.0.0.1:${webPort}`;
 
 const env = {
   DATABASE_URL: databaseUrl.toString(),
@@ -56,7 +56,7 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
-      command: `next build && next start --port ${webPort}`,
+      command: `next build && tsx e2e/start-standalone.ts ${webPort}`,
       env,
       url: `${baseURL}/sign-in`,
       timeout: 300_000,

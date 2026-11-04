@@ -2,12 +2,13 @@
 **/.next
 **/.turbo
 **/*.tsbuildinfo
+**/.env*
+!.env.example
+**/data
 .git
 .github
 .superpowers
 graphify-out
-data
-.env
 coverage
 **/playwright-report
 **/test-results
