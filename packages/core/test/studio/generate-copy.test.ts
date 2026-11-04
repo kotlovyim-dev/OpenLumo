@@ -15,11 +15,20 @@ describe('formatCopySchemas', () => {
     expect(formatCopySchemas[format].safeParse(fakeResponses[`copy_${format}`]!(request)).success).toBe(true);
   });
 
-  it('rejects a carousel with one slide or six slides', () => {
+  it('accepts carousels of 3 to 8 slides only', () => {
     const carousel = fakeResponses.copy_carousel!(request) as { slides: unknown[] };
-    const slide = carousel.slides[0];
-    expect(formatCopySchemas.carousel.safeParse({ ...carousel, slides: [slide] }).success).toBe(false);
-    expect(formatCopySchemas.carousel.safeParse({ ...carousel, slides: Array(6).fill(slide) }).success).toBe(false);
+    const slides = (count: number) => ({ ...carousel, slides: Array(count).fill(carousel.slides[0]) });
+    expect(formatCopySchemas.carousel.safeParse(slides(2)).success).toBe(false);
+    expect(formatCopySchemas.carousel.safeParse(slides(3)).success).toBe(true);
+    expect(formatCopySchemas.carousel.safeParse(slides(8)).success).toBe(true);
+    expect(formatCopySchemas.carousel.safeParse(slides(9)).success).toBe(false);
+  });
+
+  it('accepts at most 5 hashtags', () => {
+    const post = fakeResponses.copy_social_post!(request) as object;
+    const tags = (count: number) => ({ ...post, hashtags: Array.from({ length: count }, (_, index) => `#tag${index}`) });
+    expect(formatCopySchemas.social_post.safeParse(tags(5)).success).toBe(true);
+    expect(formatCopySchemas.social_post.safeParse(tags(6)).success).toBe(false);
   });
 
   it('has a schema for every format a channel can plan', () => {

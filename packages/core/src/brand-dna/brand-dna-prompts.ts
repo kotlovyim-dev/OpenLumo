@@ -9,7 +9,10 @@ const TOTAL_PAGES_LIMIT = 20000;
 
 const systemPrompt = [
   'You are a brand strategist. Read the pages of a business website and describe its brand as a structured Brand DNA object.',
-  'Fill every field. Tone scales run from 0 to 10. Use hex colours for the palette. Use BCP 47 codes for languages. Leave competitors empty unless the pages name them.',
+  'Fill every field the pages support. Tone scales run from 0 to 10. Use hex colours for the palette. Use BCP 47 codes for languages. Leave competitors empty unless the pages name them.',
+  'Keep concrete, quotable facts verbatim from the pages: numbers with their units, prices, years, places, product names, guarantees, awards, proof points and customer words. Put them into the offering, products, pain points, objections and sample phrases where they fit.',
+  "Copy sample phrases word for word from the pages, and write pain points and objections in the customers' own words when the pages quote them.",
+  'Never invent a fact, number, name or quote the pages do not state. Leave a text or list empty rather than guess.',
   untrustedContentRule,
 ].join('\n');
 

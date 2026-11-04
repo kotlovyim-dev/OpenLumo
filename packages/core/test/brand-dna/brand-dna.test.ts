@@ -87,6 +87,15 @@ describe('synthesizeBrandDna', () => {
     expect(user).toContain('less corporate');
   });
 
+  it('asks to keep quotable facts verbatim and never invent them', async () => {
+    const brain = new FakeProvider({ textResponses: [JSON.stringify(validDna)] });
+    await synthesizeBrandDna(brain, 'fake/text', crawlWith('text', []), []);
+    const system = (brain.requests[0] as TextRequest).messages.find((m) => m.role === 'system')!.content;
+    expect(system).toContain('verbatim');
+    expect(system).toContain('customer words');
+    expect(system).toContain('Never invent a fact, number, name or quote');
+  });
+
   it('caps title, description and the total size of the page content', async () => {
     const brain = new FakeProvider({ textResponses: [JSON.stringify(validDna)] });
     const crawl = crawlWith('x'.repeat(5000), []);

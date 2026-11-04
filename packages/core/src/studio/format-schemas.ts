@@ -10,15 +10,15 @@ const imageBriefSchema = z.object({
 
 const socialPostCopySchema = z.object({
   caption: z.string().min(1),
-  hashtags: z.array(z.string()),
+  hashtags: z.array(z.string()).max(5),
   imageBrief: imageBriefSchema,
 });
 
 const carouselCopySchema = z.object({
   slides: z
     .array(z.object({ title: z.string().min(1), text: z.string().min(1), imageBrief: imageBriefSchema }))
-    .min(2)
-    .max(5),
+    .min(3)
+    .max(8),
   caption: z.string().min(1),
 });
 
