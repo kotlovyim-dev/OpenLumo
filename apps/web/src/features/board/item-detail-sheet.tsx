@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { X } from 'lucide-react';
-import { LocalTime, useBrowserValue } from '@/components/local-time';
+import { LocalTime, toLocalInput, useBrowserValue } from '@/components/local-time';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,7 @@ import { approveItem, editItemCopy, regenerateItem, rejectItem, restoreVersion, 
 import type { ItemDetail, ItemStatus } from './board-service';
 import { CopyEditor, type CopyValue } from './copy-editor';
 import { formatLabels } from './item-card';
+import { ItemExport } from './item-export';
 import type { ItemResult } from './item-service';
 
 const statusLabels: Record<ItemStatus, string> = {
@@ -41,12 +42,17 @@ const errorMessages: Record<Exclude<ItemResult, { ok: true }>['error'], string> 
 
 const genericError = 'Something went wrong. Try again.';
 
-function toLocalInput(iso: string) {
-  const date = new Date(iso);
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
-}
-
-export function ItemDetailSheet({ brandId, detail, canEdit }: { brandId: string; detail: ItemDetail; canEdit: boolean }) {
+export function ItemDetailSheet({
+  brandId,
+  detail,
+  canEdit,
+  closeHref,
+}: {
+  brandId: string;
+  detail: ItemDetail;
+  canEdit: boolean;
+  closeHref: string;
+}) {
   const router = useRouter();
   const sheetRef = useRef<HTMLDialogElement>(null);
   const rejectRef = useRef<HTMLDialogElement>(null);
@@ -63,7 +69,6 @@ export function ItemDetailSheet({ brandId, detail, canEdit }: { brandId: string;
   const reviewable = detail.status === 'suggested' || detail.status === 'in_review';
   const schedulable = reviewable || detail.status === 'approved' || detail.status === 'scheduled';
   const copyEditable = canEdit && reviewable;
-  const boardHref = `/brands/${brandId}/board`;
 
   useEffect(() => {
     sheetRef.current?.showModal();
@@ -130,7 +135,7 @@ export function ItemDetailSheet({ brandId, detail, canEdit }: { brandId: string;
     <dialog
       ref={sheetRef}
       aria-labelledby="item-detail-title"
-      onClose={(event) => event.target === event.currentTarget && router.push(boardHref, { scroll: false })}
+      onClose={(event) => event.target === event.currentTarget && router.push(closeHref, { scroll: false })}
       className="m-0 ml-auto h-dvh max-h-none w-full max-w-xl overflow-y-auto border-l border-border bg-surface p-0 text-foreground backdrop:bg-black/60"
     >
       <div className="flex flex-col gap-6 p-6">
@@ -257,6 +262,17 @@ export function ItemDetailSheet({ brandId, detail, canEdit }: { brandId: string;
           <p className="text-sm text-muted">
             Scheduled for <LocalTime value={detail.scheduledAt} />
           </p>
+        )}
+
+        {current && (
+          <ItemExport
+            brandId={brandId}
+            itemId={detail.id}
+            text={detail.text}
+            assetIds={current.assetIds}
+            canExport={canEdit}
+            exportable={detail.status === 'approved' || detail.status === 'scheduled'}
+          />
         )}
 
         <section aria-labelledby="history-heading" className="flex flex-col gap-3">

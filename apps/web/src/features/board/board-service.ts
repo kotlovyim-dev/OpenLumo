@@ -1,6 +1,7 @@
 import 'server-only';
-import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, lt, ne, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
+import { itemText, type FormatCopy } from '@openlumo/core';
 import { contentItems, itemVersions, jobRuns, type Database } from '@openlumo/db';
 
 type Item = typeof contentItems.$inferSelect;
@@ -38,6 +39,7 @@ export type ItemDetail = {
   angle: string | null;
   scheduledAt: string | null;
   currentVersionNumber: number | null;
+  text: string | null;
   versions: ItemVersionEntry[];
 };
 
@@ -51,7 +53,7 @@ function cardTitle(copy: unknown): string | null {
   return title ?? null;
 }
 
-export async function loadBoard(db: Database, brandId: string): Promise<BoardCard[]> {
+async function loadCards(db: Database, condition: SQL | undefined): Promise<BoardCard[]> {
   const items = await db
     .select({
       id: contentItems.id,
@@ -64,7 +66,7 @@ export async function loadBoard(db: Database, brandId: string): Promise<BoardCar
     })
     .from(contentItems)
     .leftJoin(itemVersions, eq(itemVersions.id, contentItems.currentVersionId))
-    .where(and(eq(contentItems.brandId, brandId), ne(contentItems.status, 'rejected')))
+    .where(condition)
     .orderBy(sql`${contentItems.scheduledAt} asc nulls last`, asc(contentItems.createdAt));
   if (items.length === 0) return [];
 
@@ -98,6 +100,29 @@ export async function loadBoard(db: Database, brandId: string): Promise<BoardCar
   }));
 }
 
+export function loadBoard(db: Database, brandId: string): Promise<BoardCard[]> {
+  return loadCards(db, and(eq(contentItems.brandId, brandId), ne(contentItems.status, 'rejected')));
+}
+
+export function loadOnDemandCards(db: Database, brandId: string): Promise<BoardCard[]> {
+  return loadCards(
+    db,
+    and(eq(contentItems.brandId, brandId), isNull(contentItems.strategyId), ne(contentItems.status, 'rejected')),
+  );
+}
+
+export function loadCalendarCards(db: Database, brandId: string, from: Date, to: Date): Promise<BoardCard[]> {
+  return loadCards(
+    db,
+    and(
+      eq(contentItems.brandId, brandId),
+      inArray(contentItems.status, ['suggested', 'in_review', 'approved', 'scheduled']),
+      gte(contentItems.scheduledAt, from),
+      lt(contentItems.scheduledAt, to),
+    ),
+  );
+}
+
 export async function loadItemDetail(db: Database, brandId: string, itemId: string): Promise<ItemDetail | null> {
   if (!z.uuid().safeParse(itemId).success) return null;
   const [item] = await db
@@ -110,6 +135,7 @@ export async function loadItemDetail(db: Database, brandId: string, itemId: stri
     .from(itemVersions)
     .where(eq(itemVersions.itemId, itemId))
     .orderBy(desc(itemVersions.number));
+  const current = versions.find((version) => version.id === item.currentVersionId);
   return {
     id: item.id,
     status: item.status,
@@ -118,7 +144,8 @@ export async function loadItemDetail(db: Database, brandId: string, itemId: stri
     pillar: item.pillar,
     angle: item.angle,
     scheduledAt: item.scheduledAt?.toISOString() ?? null,
-    currentVersionNumber: versions.find((version) => version.id === item.currentVersionId)?.number ?? null,
+    currentVersionNumber: current?.number ?? null,
+    text: current ? itemText(item.format, current.copy as FormatCopy) : null,
     versions: versions.map((version) => ({
       number: version.number,
       author: version.author,

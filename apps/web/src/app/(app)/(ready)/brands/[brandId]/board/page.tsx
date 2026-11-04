@@ -51,6 +51,7 @@ export default async function Page({
           brandId={brandId}
           detail={detail}
           canEdit={canEdit}
+          closeHref={`/brands/${brandId}/board`}
         />
       )}
     </div>

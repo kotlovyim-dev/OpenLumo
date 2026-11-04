@@ -41,9 +41,8 @@ function titleOf(item: ExportableItem): string {
   }
 }
 
-function plainText(item: ExportableItem): string {
-  const copy = item.copy;
-  switch (item.format) {
+export function itemText(format: ItemFormat, copy: FormatCopy): string {
+  switch (format) {
     case 'social_post': {
       const { caption, hashtags } = copy as SocialPostCopy;
       return [caption, hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ')].filter(Boolean).join('\n\n');
@@ -57,8 +56,12 @@ function plainText(item: ExportableItem): string {
       const { headline, primaryText, callToAction } = copy as StaticAdCopy;
       return `${headline}\n\n${primaryText}\n\n${callToAction}`;
     }
-    default:
-      return titleOf(item);
+    case 'email': {
+      const { subject, preheader, body } = copy as EmailCopy;
+      return [subject, preheader, body].filter(Boolean).join('\n\n');
+    }
+    case 'blog_post':
+      return renderBlogMarkdown(copy as BlogPostCopy);
   }
 }
 
@@ -69,7 +72,7 @@ function mainFile(item: ExportableItem): { name: string; content: string } {
   if (item.format === 'blog_post') {
     return { name: 'post.md', content: renderBlogMarkdown(item.copy as BlogPostCopy) };
   }
-  return { name: 'copy.txt', content: plainText(item) };
+  return { name: 'copy.txt', content: itemText(item.format, item.copy) };
 }
 
 function folderBase(item: ExportableItem): string {

@@ -1,8 +1,7 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useState, type ReactNode } from 'react';
-import { useJobEvents } from '@/hooks/use-job-events';
+import type { ReactNode } from 'react';
+import { useLiveSteps } from '@/hooks/use-live-steps';
 import type { BoardCard, ItemStatus } from './board-service';
 import { ItemCard } from './item-card';
 
@@ -25,31 +24,7 @@ export function BoardColumns({
   canEdit: boolean;
   empty: ReactNode;
 }) {
-  const router = useRouter();
-  const [liveSteps, setLiveSteps] = useState<Record<string, string>>({});
-
-  useJobEvents(
-    brandId,
-    (event) => {
-      if (event.status === 'succeeded' || event.status === 'failed') {
-        const { itemId } = event;
-        if (itemId) {
-          setLiveSteps((current) => {
-            const next = { ...current };
-            delete next[itemId];
-            return next;
-          });
-        }
-        router.refresh();
-        return;
-      }
-      if (event.itemId && event.step) {
-        const { itemId, step } = event;
-        setLiveSteps((current) => ({ ...current, [itemId]: step }));
-      }
-    },
-    () => router.refresh(),
-  );
+  const liveSteps = useLiveSteps(brandId);
 
   if (cards.length === 0) return empty;
 

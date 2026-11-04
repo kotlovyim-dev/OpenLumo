@@ -1,7 +1,7 @@
 import { unzipSync, strFromU8 } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { createPartialBrandDna } from '../../src/brand-dna/brand-dna-schema';
-import { buildExportBundle, type ExportableItem } from '../../src/export/build-export-bundle';
+import { buildExportBundle, itemText, type ExportableItem } from '../../src/export/build-export-bundle';
 import { slugify } from '../../src/export/slugify';
 
 const dna = createPartialBrandDna({ name: 'Acme', palette: [] });
@@ -84,5 +84,20 @@ describe('traversal-safe folder names', () => {
       const [folder] = name.split('/');
       if (name.includes('/')) expect(folder).toMatch(/^[a-z0-9-]+$/);
     }
+  });
+});
+
+describe('itemText', () => {
+  it('gives emails and blog posts readable clipboard text', () => {
+    expect(itemText('email', { subject: 'Hi', preheader: '', body: 'Body' })).toBe('Hi\n\nBody');
+    expect(
+      itemText('blog_post', {
+        seoTitle: 'Title',
+        metaDescription: 'Meta',
+        outline: ['One'],
+        article: 'Article text',
+        faq: [],
+      }),
+    ).toContain('Article text');
   });
 });
