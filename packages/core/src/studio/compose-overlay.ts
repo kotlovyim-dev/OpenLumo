@@ -60,7 +60,7 @@ async function renderLayer(width: number, height: number, overlay: Overlay): Pro
     },
   };
   const font = await loadFont();
-  const svg = await satori(tree, { width, height, fonts: [{ name: 'Inter', data: font, weight: 700, style: 'normal' }] });
+  const svg = await satori(tree as Parameters<typeof satori>[0], { width, height, fonts: [{ name: 'Inter', data: font, weight: 700, style: 'normal' }] });
   return Buffer.from(svg);
 }
 

@@ -1,0 +1,84 @@
+@import 'tailwindcss';
+
+:root {
+  --background: #0b0a12;
+  --surface: #14121f;
+  --elevated: #1c1a2b;
+  --border: #2a2740;
+  --foreground: #edebf7;
+  --muted: #9a97b0;
+  --lilac: #cbbfff;
+  --violet: #9f8cf0;
+  --violet-foreground: #26204a;
+  --pale: #f1edff;
+  --ink: #26204a;
+  --blush: #ff9bb8;
+  --danger: #ff7a93;
+  --channel-ads: #ff5f7e;
+  --channel-socials: #ffb347;
+  --channel-seo: #ffe156;
+  --channel-email: #3fd68f;
+  --channel-brand: #4aa3ff;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --background: #f7f5ff;
+    --surface: #ffffff;
+    --elevated: #f1edff;
+    --border: #ddd7f5;
+    --foreground: #26204a;
+    --muted: #5f5a80;
+    --lilac: #6a55d6;
+    --violet: #6a55d6;
+    --violet-foreground: #ffffff;
+    --danger: #c42a4d;
+    color-scheme: light;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-border: var(--border);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-lilac: var(--lilac);
+  --color-violet: var(--violet);
+  --color-violet-foreground: var(--violet-foreground);
+  --color-pale: var(--pale);
+  --color-ink: var(--ink);
+  --color-blush: var(--blush);
+  --color-danger: var(--danger);
+  --color-channel-ads: var(--channel-ads);
+  --color-channel-socials: var(--channel-socials);
+  --color-channel-seo: var(--channel-seo);
+  --color-channel-email: var(--channel-email);
+  --color-channel-brand: var(--channel-brand);
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--lilac);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
