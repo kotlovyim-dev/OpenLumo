@@ -75,7 +75,7 @@ A failed attempt updates only `status` and `attempted_at`, so the last good rese
 - `research-schema.ts`: the Zod schema for findings (name, features, audience with channels, competitors) and the stored research row type.
 - `research-prompts.ts`: builds both prompts. Site pages and the brief are wrapped as untrusted content. The research prompt states today's date and asks for current information.
 - `research-brand.ts`: step one asks the brain model, with web search on and eight results, for a cited brief covering the brand name, products and features, audience, three to five direct competitors and recent changes. Step two turns the brief into findings with `generateObject`, without web search. Competitor `sourceUrls` that are not among the citations are removed, at most five competitors are kept, and competitors on the brand's own site are dropped.
-- `verify-competitors.ts`: fetches each competitor URL with `safeFetch`, with private-address protection and a short timeout. Competitors whose site does not answer below status 400 are dropped. Competitors without a URL are kept.
+- `verify-competitors.ts`: fetches each competitor URL with `safeFetch`, with private-address protection and a short timeout. Competitors whose site cannot be reached, resolves to a blocked address or answers 404 or 410 are dropped. A site that answers with any other status, such as a 403 from a bot wall, exists and is kept. Competitors without a URL are kept.
 - `apply-research.ts`: copies findings into a DNA object, replacing `identity.features`, `audience` and `competitors`, and filling `identity.name` only when it is empty.
 - `research-repository.ts`: saves a successful run, records a failed attempt and loads the row.
 
@@ -90,7 +90,7 @@ A failed attempt updates only `status` and `attempted_at`, so the last good rese
 
 `brand.crawl` enqueues `brand.research` instead of `brand.synthesize-dna`. The thin-site fallback to manual input is unchanged.
 
-`brand.synthesize-dna` includes the research brief and findings in its prompt when research succeeded, applies the findings over the generated DNA, saves it and renames the brand. The prompt no longer tells the model to leave competitors empty.
+`brand.synthesize-dna` includes the research brief in its prompt, applies the findings over the generated DNA, saves it and renames the brand. Once research has produced findings, competitors come only from those verified findings, never from the synthesis output. The prompt no longer tells the model to leave competitors empty.
 
 ### Web
 

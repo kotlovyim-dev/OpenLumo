@@ -66,7 +66,9 @@ export function createBrandSynthesizeDnaJob(deps: WorkerDependencies) {
       const { dna: synthesized, usage } = await synthesizeBrandDna(brain.model, brain.modelId, crawl, [], research?.brief);
       await context.recordUsage(usage);
 
-      const researched = research?.findings ? applyResearch(synthesized, research.findings) : synthesized;
+      const researched = research?.findings
+        ? applyResearch({ ...synthesized, competitors: [] }, research.findings)
+        : synthesized;
       const dna = crawl.logoAssetId
         ? { ...researched, visuals: { ...researched.visuals, logoAssetId: crawl.logoAssetId } }
         : researched;

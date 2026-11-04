@@ -287,6 +287,26 @@ describe('brand jobs', () => {
       expect(renamed?.name).toBe('Sunrise Bakery');
     });
 
+    it('takes competitors only from verified research once research ran', async () => {
+      const brand = await crawledBrand();
+      const originalResearch = fakeResponses.brand_research!;
+      const originalDna = fakeResponses.brand_dna!;
+      fakeResponses.brand_research = (request) => ({ ...(originalResearch(request) as object), competitors: [] });
+      fakeResponses.brand_dna = (request) => ({
+        ...(originalDna(request) as object),
+        competitors: [{ name: 'Invented Rival', url: 'https://invented.example', positioning: '', strengths: [], weaknesses: [], sourceUrls: [] }],
+      });
+      try {
+        await createBrandResearchJob(deps()).run({ brandId: brand.id }, context);
+        await createBrandSynthesizeDnaJob(deps()).run({ brandId: brand.id }, context);
+      } finally {
+        fakeResponses.brand_research = originalResearch;
+        fakeResponses.brand_dna = originalDna;
+      }
+
+      expect((await getBrandDna(db, brand.id))?.dna.competitors).toEqual([]);
+    });
+
     it('records failed research and still queues synthesis', async () => {
       const brand = await crawledBrand();
 

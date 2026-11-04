@@ -116,6 +116,7 @@ describe('verifyCompetitors', () => {
   beforeAll(async () => {
     server = http.createServer((req, res) => {
       if (req.url === '/') res.writeHead(200, { 'content-type': 'text/html' }).end('<html></html>');
+      else if (req.url === '/bot-wall') res.writeHead(403).end();
       else res.writeHead(404).end();
     });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -138,6 +139,12 @@ describe('verifyCompetitors', () => {
     );
 
     expect(verified.map((entry) => entry.name)).toEqual(['Live', 'Unknown']);
+  });
+
+  it('keeps sites that turn crawlers away but exist', async () => {
+    const verified = await verifyCompetitors([competitor('Walled', { url: `${origin}/bot-wall` })], { allowPrivateHosts: true });
+
+    expect(verified.map((entry) => entry.name)).toEqual(['Walled']);
   });
 
   it('drops competitors on private addresses when private hosts are blocked', async () => {
