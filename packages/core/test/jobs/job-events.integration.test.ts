@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '@openlumo/db';
 import { createTestDatabase } from '@openlumo/db/testing';
@@ -28,5 +29,19 @@ describe('job events', () => {
     await publishJobEvent(db, event);
     await new Promise((resolve) => setTimeout(resolve, 200));
     expect(received).toHaveLength(1);
+  });
+
+  it('reports when the listener connection is lost but not on a normal unsubscribe', async () => {
+    let closed = 0;
+    const unlisten = await listenToJobEvents(url, () => undefined, { onClose: () => closed++ });
+    await unlisten();
+    expect(closed).toBe(0);
+
+    const lost = await listenToJobEvents(url, () => undefined, { onClose: () => closed++ });
+    await db.execute(
+      sql`select pg_terminate_backend(pid) from pg_stat_activity where query = 'LISTEN job_events' and pid <> pg_backend_pid()`,
+    );
+    await expect.poll(() => closed).toBe(1);
+    await lost();
   });
 });

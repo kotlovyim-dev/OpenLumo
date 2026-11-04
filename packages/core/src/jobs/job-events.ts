@@ -22,12 +22,21 @@ export async function publishJobEvent(db: Database, event: JobEvent): Promise<vo
 export async function listenToJobEvents(
   databaseUrl: string,
   onEvent: (event: JobEvent) => void,
+  { onClose }: { onClose?: () => void } = {},
 ): Promise<() => Promise<void>> {
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
+  let closed = false;
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    onClose?.();
+  };
   client.on('error', (error) => {
     console.error('job event listener connection lost', error);
+    close();
   });
+  client.on('end', close);
   client.on('notification', (message) => {
     if (!message.payload) return;
     try {
@@ -39,8 +48,12 @@ export async function listenToJobEvents(
   try {
     await client.query(`LISTEN ${channel}`);
   } catch (error) {
+    closed = true;
     await client.end();
     throw error;
   }
-  return () => client.end();
+  return async () => {
+    closed = true;
+    await client.end();
+  };
 }

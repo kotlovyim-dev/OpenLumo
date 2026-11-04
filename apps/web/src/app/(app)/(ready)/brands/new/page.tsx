@@ -1,12 +1,16 @@
 import type { Metadata } from 'next';
+import { NewBrandForm } from '@/features/brands/new-brand-form';
+import { getServerContext } from '@/lib/server-context';
 
 export const metadata: Metadata = { title: 'New brand' };
 
-export default function Page() {
+export default async function Page() {
+  await getServerContext();
   return (
-    <div className="max-w-xl">
-      <h1 className="text-2xl font-bold tracking-tight">Create your first brand</h1>
-      <p className="mt-2 text-muted">Brand setup is coming soon.</p>
+    <div>
+      <h1 className="text-2xl font-bold tracking-tight">Create a brand</h1>
+      <p className="mb-6 mt-2 text-muted">Tell Lumo who you are. You can refine everything afterwards.</p>
+      <NewBrandForm />
     </div>
   );
 }
