@@ -1,6 +1,7 @@
 import { createEvents } from 'ics';
 
 const EVENT_MINUTES = 30;
+const MAX_TITLE_LENGTH = 120;
 
 export type CalendarItem = { id: string; title: string; scheduledAt: Date; description: string };
 
@@ -8,7 +9,7 @@ export function buildCalendarFile(items: CalendarItem[]): string {
   const { error, value } = createEvents(
     items.map((item) => ({
       uid: `${item.id}@openlumo`,
-      title: item.title,
+      title: item.title.slice(0, MAX_TITLE_LENGTH),
       description: item.description,
       start: item.scheduledAt.getTime(),
       startInputType: 'utc' as const,

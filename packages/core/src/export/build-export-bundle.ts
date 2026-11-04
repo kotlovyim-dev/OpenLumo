@@ -94,7 +94,7 @@ export async function buildExportBundle(items: ExportableItem[], storage: AssetS
     const { name, content } = mainFile(item);
     files[`${folder}/${name}`] = strToU8(content);
     for (const [index, key] of item.imageKeys.entries()) {
-      files[`${folder}/image-${index + 1}.png`] = await storage.read(key);
+      files[`${folder}/image-${index + 1}.png`] = [await storage.read(key), { level: 0 }];
     }
     if (item.scheduledAt) {
       events.push({

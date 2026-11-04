@@ -74,3 +74,15 @@ describe('buildExportBundle', () => {
     expect(folders).toEqual(new Set(['2026-12-01-instagram-same', '2026-12-01-instagram-same-2', '2026-12-01-instagram-same-3']));
   });
 });
+
+describe('traversal-safe folder names', () => {
+  it.each(['../../x', 'a/b', 'C:\\x'])('keeps %s inside a plain folder', async (caption) => {
+    const files = unzipSync(await buildExportBundle([social('1', caption, new Date('2026-12-01T09:00:00Z'))], storage));
+    for (const name of Object.keys(files)) {
+      expect(name).not.toContain('..');
+      expect(name).not.toContain(String.fromCharCode(92));
+      const [folder] = name.split('/');
+      if (name.includes('/')) expect(folder).toMatch(/^[a-z0-9-]+$/);
+    }
+  });
+});

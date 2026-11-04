@@ -22,3 +22,11 @@ describe('buildCalendarFile without items', () => {
     expect(buildCalendarFile([])).toContain('BEGIN:VCALENDAR');
   });
 });
+
+describe('buildCalendarFile titles', () => {
+  it('truncates long titles to 120 characters', () => {
+    const ics = buildCalendarFile([{ id: 'a', title: 'T'.repeat(300), scheduledAt: new Date('2026-12-01T09:00:00Z'), description: '' }]);
+    const summary = ics.replace(/\r?\n[ \t]/g, '').match(/SUMMARY:(T+)/);
+    expect(summary![1]).toHaveLength(120);
+  });
+});

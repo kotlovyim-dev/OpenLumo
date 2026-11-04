@@ -41,7 +41,10 @@ async function loadExportableItems(
   const exportable = [];
   for (const { item, version } of rows) {
     const imageRows = version.assetIds.length
-      ? await db.select().from(assets).where(inArray(assets.id, version.assetIds))
+      ? await db
+          .select()
+          .from(assets)
+          .where(and(eq(assets.brandId, brandId), inArray(assets.id, version.assetIds)))
       : [];
     const keyById = new Map(imageRows.map((asset) => [asset.id, asset.storageKey]));
     exportable.push({

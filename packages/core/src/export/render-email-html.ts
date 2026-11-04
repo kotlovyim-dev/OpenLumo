@@ -5,6 +5,7 @@ import { escapeHtml } from './escape-html';
 
 const DEFAULT_ACCENT_COLOR = '#6d55f0';
 const SAFE_URL = /^(https?:|mailto:)/i;
+const HEX_COLOR = /^#[0-9a-f]{3}([0-9a-f]{3})?$/i;
 
 function createMarkdown(accentColor: string): Marked {
   return new Marked({
@@ -21,7 +22,8 @@ function createMarkdown(accentColor: string): Marked {
 }
 
 export function renderEmailHtml(copy: EmailCopy, dna: BrandDna): string {
-  const accentColor = escapeHtml(dna.visuals.palette[0] ?? DEFAULT_ACCENT_COLOR);
+  const candidate = dna.visuals.palette[0] ?? '';
+  const accentColor = HEX_COLOR.test(candidate) ? candidate : DEFAULT_ACCENT_COLOR;
   const body = createMarkdown(accentColor).parse(copy.body, { async: false });
   return `<!doctype html>
 <html>
