@@ -18,7 +18,8 @@ import {
   loadConfig,
   saveBrandDna,
 } from '@openlumo/core';
-import { contentItems, dnaFeedback, itemVersions, users, type Database } from '@openlumo/db';
+import { ProviderError } from '@openlumo/providers';
+import { assets, contentItems, dnaFeedback, itemVersions, users, type Database } from '@openlumo/db';
 import { createTestDatabase } from '@openlumo/db/testing';
 import { createItemGenerateJob } from '../src/jobs/item-generate';
 
@@ -87,7 +88,7 @@ describe('item.generate', () => {
 
     await job().run({ brandId: brand.id, itemId: item.id, targetVersion: 1 }, context);
 
-    expect(progress).toEqual(['Writing copy']);
+    expect(progress).toEqual(['Writing copy', 'Rendering image']);
     const found = await getItemWithCurrentVersion(db, item.id);
     expect(found?.version).toMatchObject({ number: 1, author: 'planner' });
     expect(found?.version?.copy).toMatchObject({ caption: expect.any(String), imageBrief: { prompt: expect.any(String) } });
@@ -110,13 +111,13 @@ describe('item.generate', () => {
 
     await job().run({ brandId: brand.id, itemId: item.id, targetVersion: 1 }, context);
     await job().run(
-      { brandId: brand.id, itemId: item.id, targetVersion: 2, instruction: 'show the crust #fail-once' },
+      { brandId: brand.id, itemId: item.id, targetVersion: 2, instruction: 'show the crust' },
       context,
     );
 
     const found = await getItemWithCurrentVersion(db, item.id);
     expect(found?.version?.number).toBe(2);
-    expect(found?.version?.copy).toMatchObject({ imageBrief: { prompt: expect.stringContaining('#fail-once') } });
+    expect(found?.version?.copy).toMatchObject({ imageBrief: { prompt: expect.stringContaining('show the crust') } });
     expect(await db.select().from(itemVersions).where(eq(itemVersions.itemId, item.id))).toHaveLength(2);
   });
 
@@ -160,5 +161,66 @@ describe('item.generate', () => {
     const found = await getItemWithCurrentVersion(db, item.id);
     expect(found?.item.currentVersionId).toBe(second!.id);
     expect(await db.select().from(itemVersions).where(eq(itemVersions.itemId, item.id))).toHaveLength(2);
+  });
+
+  it('stores one image asset for a social post and attaches it to the version', async () => {
+    const { brand, item } = await itemFor({ withDna: true });
+
+    await job().run({ brandId: brand.id, itemId: item.id, targetVersion: 1 }, context);
+
+    const found = await getItemWithCurrentVersion(db, item.id);
+    const [asset] = await db.select().from(assets).where(eq(assets.brandId, brand.id));
+    expect(found?.version?.assetIds).toEqual([asset?.id]);
+    expect(asset).toMatchObject({
+      kind: 'image',
+      provider: 'fake',
+      model: 'fake/image',
+      mimeType: 'image/png',
+      storageKey: `brands/${brand.id}/${asset?.id}.png`,
+    });
+    expect(asset?.width).toBeGreaterThan(0);
+    expect((await createAssetStorage(storageDirectory).read(asset!.storageKey)).length).toBeGreaterThan(0);
+  });
+
+  it('renders no image for an email', async () => {
+    const { brand, item } = await itemFor({ withDna: true, format: 'email' });
+
+    await job().run({ brandId: brand.id, itemId: item.id, targetVersion: 1 }, context);
+
+    expect(await db.select().from(assets).where(eq(assets.brandId, brand.id))).toHaveLength(0);
+  });
+
+  it('keeps the copy and reports the image step when image rendering fails, then renders on re-run', async () => {
+    progress.length = 0;
+    const { brand, item } = await itemFor({ withDna: true });
+    const payload = { brandId: brand.id, itemId: item.id, targetVersion: 1, instruction: 'loaf #fail-once' };
+
+    const failure = await job()
+      .run(payload, context)
+      .catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(ProviderError);
+    expect(failure).toMatchObject({ code: 'invalid_output' });
+    expect(progress.at(-1)).toBe('Rendering image');
+    const failed = await getItemWithCurrentVersion(db, item.id);
+    expect(failed?.version?.copy).toMatchObject({ caption: expect.any(String) });
+    expect(failed?.version?.assetIds).toEqual([]);
+
+    await job().run(payload, context);
+
+    const retried = await getItemWithCurrentVersion(db, item.id);
+    expect(retried?.version?.assetIds).toHaveLength(1);
+    expect(await db.select().from(itemVersions).where(eq(itemVersions.itemId, item.id))).toHaveLength(1);
+  });
+
+  it('renders every carousel slide', async () => {
+    const { brand, item } = await itemFor({ withDna: true });
+    await db.update(contentItems).set({ format: 'carousel' }).where(eq(contentItems.id, item.id));
+
+    await job().run({ brandId: brand.id, itemId: item.id, targetVersion: 1 }, context);
+
+    const found = await getItemWithCurrentVersion(db, item.id);
+    const slides = (found?.version?.copy as { slides: unknown[] }).slides;
+    expect(found?.version?.assetIds).toHaveLength(slides.length);
   });
 });

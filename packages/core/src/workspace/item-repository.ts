@@ -16,12 +16,12 @@ export class ItemNotFoundError extends Error {
   }
 }
 
-export async function hasVersion(db: Database, itemId: string, number: number): Promise<boolean> {
+export async function getVersion(db: Database, itemId: string, number: number): Promise<ItemVersion | null> {
   const [row] = await db
-    .select({ id: itemVersions.id })
+    .select()
     .from(itemVersions)
     .where(and(eq(itemVersions.itemId, itemId), eq(itemVersions.number, number)));
-  return row !== undefined;
+  return row ?? null;
 }
 
 export async function appendVersion(
@@ -60,4 +60,8 @@ export async function getItemWithCurrentVersion(
     .leftJoin(itemVersions, eq(itemVersions.id, contentItems.currentVersionId))
     .where(eq(contentItems.id, itemId));
   return row ?? null;
+}
+
+export async function attachAssets(db: Database, versionId: string, assetIds: string[]): Promise<void> {
+  await db.update(itemVersions).set({ assetIds }).where(eq(itemVersions.id, versionId));
 }
