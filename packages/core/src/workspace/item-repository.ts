@@ -1,10 +1,28 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { contentItems, type Database, itemVersions } from '@openlumo/db';
 import type { FormatCopy } from '../studio/format-schemas';
 
 export type ContentItem = typeof contentItems.$inferSelect;
 export type ItemVersion = typeof itemVersions.$inferSelect;
 export type NewVersion = { copy: FormatCopy; author: ItemVersion['author'] };
+
+export class ItemNotFoundError extends Error {
+  readonly retryable = false;
+  readonly code = 'item_not_found';
+
+  constructor(itemId: string) {
+    super(`Item ${itemId} not found`);
+    this.name = 'ItemNotFoundError';
+  }
+}
+
+export async function hasVersion(db: Database, itemId: string, number: number): Promise<boolean> {
+  const [row] = await db
+    .select({ id: itemVersions.id })
+    .from(itemVersions)
+    .where(and(eq(itemVersions.itemId, itemId), eq(itemVersions.number, number)));
+  return row !== undefined;
+}
 
 export async function appendVersion(
   db: Database,
@@ -19,7 +37,15 @@ export async function appendVersion(
       .onConflictDoNothing({ target: [itemVersions.itemId, itemVersions.number] })
       .returning();
     if (!inserted) return null;
-    await tx.update(contentItems).set({ currentVersionId: inserted.id }).where(eq(contentItems.id, itemId));
+    await tx
+      .update(contentItems)
+      .set({ currentVersionId: inserted.id })
+      .where(
+        and(
+          eq(contentItems.id, itemId),
+          sql`${contentItems.currentVersionId} is null or ${inserted.number} > (select number from item_versions where id = ${contentItems.currentVersionId})`,
+        ),
+      );
     return inserted;
   });
 }

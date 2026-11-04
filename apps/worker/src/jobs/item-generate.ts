@@ -6,6 +6,8 @@ import {
   generateCopy,
   getBrandDna,
   getItemWithCurrentVersion,
+  hasVersion,
+  ItemNotFoundError,
   listOpenFeedback,
   resolveModels,
   type JobContext,
@@ -20,11 +22,12 @@ async function writeCopy(
 ): Promise<void> {
   await context.reportProgress('Writing copy');
 
+  const found = await getItemWithCurrentVersion(db, itemId);
+  if (!found) throw new ItemNotFoundError(itemId);
+  if (await hasVersion(db, itemId, targetVersion)) return;
+  const { item } = found;
   const saved = await getBrandDna(db, brandId);
   if (!saved) throw new BrandNotReadyError(brandId);
-  const found = await getItemWithCurrentVersion(db, itemId);
-  if (!found) throw new Error(`Item ${itemId} not found`);
-  const { item } = found;
 
   const { brain } = await resolveModels(db, config);
   const { copy, usage } = await generateCopy(brain.model, brain.modelId, {

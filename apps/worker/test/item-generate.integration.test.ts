@@ -8,6 +8,8 @@ import {
   type JobContext,
   type Queue,
   BrandNotReadyError,
+  appendVersion,
+  ItemNotFoundError,
   createAssetStorage,
   createBrand,
   createPartialBrandDna,
@@ -27,6 +29,7 @@ describe('item.generate', () => {
   let config: Config;
   let boss: Queue;
   const progress: string[] = [];
+  let usageRecords = 0;
 
   const context: JobContext = {
     runId: 'run',
@@ -34,7 +37,9 @@ describe('item.generate', () => {
     reportProgress: async (step) => {
       progress.push(step);
     },
-    recordUsage: async () => {},
+    recordUsage: async () => {
+      usageRecords += 1;
+    },
     enqueue: async () => 'queued',
   };
 
@@ -122,5 +127,38 @@ describe('item.generate', () => {
       BrandNotReadyError,
     );
     expect(await db.select().from(itemVersions).where(eq(itemVersions.itemId, item.id))).toHaveLength(0);
+  });
+
+  it('makes no model request when the target version already exists', async () => {
+    const { brand, item } = await itemFor({ withDna: true });
+    const payload = { brandId: brand.id, itemId: item.id, targetVersion: 1 };
+    await job().run(payload, context);
+    const before = usageRecords;
+
+    await job().run(payload, context);
+
+    expect(usageRecords).toBe(before);
+  });
+
+  it('fails with a non-retryable item_not_found error for a missing item', async () => {
+    const { brand } = await itemFor({ withDna: true });
+
+    const failure = await job()
+      .run({ brandId: brand.id, itemId: crypto.randomUUID(), targetVersion: 1 }, context)
+      .catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(ItemNotFoundError);
+    expect(failure).toMatchObject({ code: 'item_not_found', retryable: false });
+  });
+
+  it('does not move current_version_id back when an older version arrives late', async () => {
+    const { item } = await itemFor({ withDna: true });
+    const copy = { subject: 's', preheader: '', body: 'b' };
+    const second = await appendVersion(db, item.id, 2, { copy, author: 'planner' });
+    await appendVersion(db, item.id, 1, { copy, author: 'planner' });
+
+    const found = await getItemWithCurrentVersion(db, item.id);
+    expect(found?.item.currentVersionId).toBe(second!.id);
+    expect(await db.select().from(itemVersions).where(eq(itemVersions.itemId, item.id))).toHaveLength(2);
   });
 });
