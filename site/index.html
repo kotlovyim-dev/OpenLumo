@@ -13,6 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="assets/hero-poster-1080.jpg" fetchpriority="high">
 <link rel="stylesheet" href="styles.css">
 <script>document.documentElement.classList.add('js')</script>
 </head>
@@ -48,7 +49,12 @@
     </div>
   </div>
   <figure class="hero-picture">
-    <img src="assets/hero1.jpg" alt="Lumo, a small lilac prism character, splits a beam of white light from a browser window into a rainbow of ad, post and email cards that other Lumos pin to a board" width="1376" height="768" fetchpriority="high" data-drift>
+    <video muted loop playsinline disablepictureinpicture preload="none" poster="assets/hero-poster-1080.jpg" width="1920" height="1080" role="img" aria-label="Lumo, a small lilac prism character, splits a beam of white light from a browser window into a rainbow of ad, post and email cards that other Lumos pin to a board" data-drift data-hero-video>
+      <source media="(min-width: 1101px)" src="assets/hero-1080.av1.mp4" type='video/mp4; codecs="av01.0.08M.08"'>
+      <source media="(min-width: 1101px)" src="assets/hero-1080.h264.mp4" type="video/mp4">
+      <source src="assets/hero-720.av1.mp4" type='video/mp4; codecs="av01.0.05M.08"'>
+      <source src="assets/hero-720.h264.mp4" type="video/mp4">
+    </video>
   </figure>
   <ul class="facts grid" data-reveal>
     <li><span class="dot" style="--c:var(--coral)"></span>MIT licensed, every line of it</li>

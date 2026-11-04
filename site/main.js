@@ -205,6 +205,22 @@ function runNewBrandDialog() {
   });
 }
 
+function playHeroVideo() {
+  const video = document.querySelector('[data-hero-video]');
+  const savesData = navigator.connection && navigator.connection.saveData;
+  if (!video || prefersReducedMotion || savesData) return;
+  video.preload = 'auto';
+  const play = () => video.play().catch(() => {});
+  if (!('IntersectionObserver' in window)) {
+    play();
+    return;
+  }
+  new IntersectionObserver(([entry]) => {
+    if (entry.isIntersecting) play();
+    else video.pause();
+  }).observe(video);
+}
+
 async function showStarCount() {
   const button = document.querySelector('[data-stars]');
   if (!button) return;
@@ -221,6 +237,7 @@ async function showStarCount() {
 revealOnEnter();
 paintHeaderByChapter();
 driftHeroPicture();
+playHeroVideo();
 runApprovalBoard();
 switchSetupTabs();
 copyCommands();
