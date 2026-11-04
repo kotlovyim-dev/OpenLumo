@@ -8,8 +8,8 @@ import {
   generateCopy,
   getBrandDna,
   listOpenFeedback,
-  measureImage,
   renderImage,
+  saveGeneratedImage,
   readLogo,
   resolveModels,
   toPng,
@@ -18,7 +18,6 @@ import {
   type ItemVersion,
   type JobContext,
 } from '@openlumo/core';
-import { assets } from '@openlumo/db';
 import type { WorkerDependencies } from '../worker-dependencies';
 
 type ImageBrief = { prompt: string; headlineOverlay?: string };
@@ -91,18 +90,9 @@ Change requested: ${feedback}` : brief.prompt;
     const bytes = brief.headlineOverlay
       ? await composeOverlay(rendered.bytes, { headline: brief.headlineOverlay, logo, accentColor })
       : await toPng(rendered.bytes);
-    const assetId = crypto.randomUUID();
-    const storageKey = `brands/${brandId}/${assetId}.png`;
-    await storage.write(storageKey, bytes);
-    const { width, height } = await measureImage(bytes);
-    await db.insert(assets).values({
-      id: assetId,
+    const assetId = await saveGeneratedImage(db, storage, {
       brandId,
-      kind: 'image',
-      storageKey,
-      mimeType: 'image/png',
-      width,
-      height,
+      bytes,
       provider: config.testProviders === 'fake' ? 'fake' : 'openrouter',
       model: image.modelId,
       prompt,

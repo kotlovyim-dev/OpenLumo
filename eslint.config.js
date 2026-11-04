@@ -12,4 +12,21 @@ export default tseslint.config(
       'no-restricted-imports': ['error', { patterns: ['@openlumo/providers/openrouter'] }],
     },
   },
+  {
+    files: ['apps/worker/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@openlumo/db',
+              allowImportNames: ['createDatabase', 'Database'],
+              message: 'Worker code reaches tables through @openlumo/core repositories.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 );

@@ -1,10 +1,16 @@
-import { eq } from 'drizzle-orm';
-import { createPartialBrandDna, getBrandDna, loadCrawlSources, saveBrandDna } from '@openlumo/core';
-import { brands, type Database } from '@openlumo/db';
+import {
+  createPartialBrandDna,
+  findBrand,
+  getBrandDna,
+  loadCrawlSources,
+  saveBrandDna,
+  setBrandStatus,
+} from '@openlumo/core';
+import type { Database } from '@openlumo/db';
 
 export async function fallBackToManualInput(db: Database, brandId: string): Promise<void> {
   if (!(await getBrandDna(db, brandId))) {
-    const [brand] = await db.select().from(brands).where(eq(brands.id, brandId));
+    const brand = await findBrand(db, brandId);
     const crawl = await loadCrawlSources(db, brandId);
     const pages = crawl?.pages ?? [];
     const name =
@@ -22,5 +28,5 @@ export async function fallBackToManualInput(db: Database, brandId: string): Prom
       }),
     );
   }
-  await db.update(brands).set({ status: 'needs_input' }).where(eq(brands.id, brandId));
+  await setBrandStatus(db, brandId, 'needs_input');
 }

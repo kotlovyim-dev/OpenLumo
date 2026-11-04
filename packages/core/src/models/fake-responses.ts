@@ -1,3 +1,4 @@
+import { DAY_MS } from '../time';
 import type { TextRequest } from '@openlumo/providers';
 import type { BrandDna } from '../brand-dna/brand-dna-schema';
 import { channelFormats, type Channel } from '../planner/channel-formats';
@@ -32,7 +33,6 @@ const sunriseBakeryDna: BrandDna = {
   languages: ['en'],
 };
 
-const DAY_MS = 86_400_000;
 
 function requestText(request: TextRequest): string {
   return request.messages.map((message) => message.content).join('\n');

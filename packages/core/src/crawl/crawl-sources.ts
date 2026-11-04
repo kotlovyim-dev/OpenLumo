@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { assets, brandSources, type Database } from '@openlumo/db';
 import type { AssetStorage } from '../assets/asset-storage';
+import { brandStorageKey } from '../assets/brand-storage-key';
 import type { CrawlResult } from './crawl-site';
 
 export const pageSourceMetaSchema = z.object({
@@ -34,7 +35,7 @@ async function storeLogo(
 ): Promise<string> {
   const id = randomUUID();
   const extension = logoExtensions[logo.mimeType] ?? 'bin';
-  const storageKey = `brands/${brandId}/${id}.${extension}`;
+  const storageKey = brandStorageKey(brandId, `${id}.${extension}`);
   await storage.write(storageKey, logo.bytes);
   await tx.insert(assets).values({ id, brandId, kind: 'logo', storageKey, mimeType: logo.mimeType });
   return id;

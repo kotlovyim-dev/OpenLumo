@@ -1,10 +1,10 @@
+import { DAY_MS } from '../time';
 import type { Message } from '@openlumo/providers';
 import type { BrandDna } from '../brand-dna/brand-dna-schema';
 import { channelFormats, type Channel } from './channel-formats';
 import type { PlannedSlot } from './plan-schema';
 import type { Goal, StrategyDocument } from './strategy-schema';
 
-const DAY_MS = 86_400_000;
 
 const strategySystemPrompt = [
   'You are a marketing strategist. Audit the brand and write a content strategy as a structured object.',

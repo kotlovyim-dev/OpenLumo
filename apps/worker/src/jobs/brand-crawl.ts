@@ -1,11 +1,10 @@
-import { eq } from 'drizzle-orm';
 import {
   type CrawlResult,
   crawlSite,
   defineJob,
+  findBrand,
   saveCrawlSources,
 } from '@openlumo/core';
-import { brands } from '@openlumo/db';
 import { fallBackToManualInput } from './brand-fallback';
 import type { WorkerDependencies } from '../worker-dependencies';
 
@@ -17,7 +16,7 @@ export function createBrandCrawlJob(deps: WorkerDependencies) {
     'brand.crawl',
     async ({ brandId }, context) => {
       await context.reportProgress('Reading your site');
-      const [brand] = await db.select().from(brands).where(eq(brands.id, brandId));
+      const brand = await findBrand(db, brandId);
       if (!brand?.url) throw new Error(`Brand ${brandId} has no URL to crawl`);
 
       const crawl = await crawlSite(brand.url, { allowPrivateHosts: config.allowPrivateHosts }).catch(

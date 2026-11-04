@@ -1,17 +1,17 @@
-import { and, eq, gte, lt, ne } from 'drizzle-orm';
 import {
   BrandNotReadyError,
+  DAY_MS,
   defineJob,
+  findStrategy,
   getBrandDna,
+  insertSuggestedItems,
+  listBrandSlotsInWindow,
+  listStrategyItemsInWindow,
   planContent,
   resolveModels,
   strategyDocumentSchema,
-  type PlannedSlot,
 } from '@openlumo/core';
-import { contentItems, strategies } from '@openlumo/db';
 import type { WorkerDependencies } from '../worker-dependencies';
-
-const DAY_MS = 86_400_000;
 
 export function createPlanMonthJob({ db, config }: WorkerDependencies) {
   return defineJob('plan.month', async ({ brandId, strategyId, from, days }, context) => {
@@ -19,22 +19,13 @@ export function createPlanMonthJob({ db, config }: WorkerDependencies) {
 
     const saved = await getBrandDna(db, brandId);
     if (!saved) throw new BrandNotReadyError(brandId);
-    const [strategy] = await db.select().from(strategies).where(eq(strategies.id, strategyId));
+    const strategy = await findStrategy(db, strategyId);
     if (!strategy) throw new Error(`Strategy ${strategyId} not found`);
 
     const start = new Date(from);
     const end = new Date(start.getTime() + days * DAY_MS);
 
-    const planned = await db
-      .select({ id: contentItems.id, status: contentItems.status, currentVersionId: contentItems.currentVersionId })
-      .from(contentItems)
-      .where(
-        and(
-          eq(contentItems.strategyId, strategyId),
-          gte(contentItems.scheduledAt, start),
-          lt(contentItems.scheduledAt, end),
-        ),
-      );
+    const planned = await listStrategyItemsInWindow(db, strategyId, start, end);
     if (planned.length > 0) {
       for (const item of planned.filter((item) => item.status === 'suggested' && !item.currentVersionId)) {
         await context.enqueue(
@@ -45,25 +36,7 @@ export function createPlanMonthJob({ db, config }: WorkerDependencies) {
       }
       return;
     }
-    const existing: PlannedSlot[] = (
-      await db
-        .select()
-        .from(contentItems)
-        .where(
-          and(
-            eq(contentItems.brandId, brandId),
-            ne(contentItems.status, 'rejected'),
-            gte(contentItems.scheduledAt, start),
-            lt(contentItems.scheduledAt, end),
-          ),
-        )
-    ).map((item) => ({
-      channel: item.channel,
-      format: item.format,
-      pillar: item.pillar ?? '',
-      angle: item.angle ?? '',
-      scheduledAt: item.scheduledAt!,
-    }));
+    const existing = await listBrandSlotsInWindow(db, brandId, start, end);
 
     const { brain } = await resolveModels(db, config);
     const { slots, usage } = await planContent(brain.model, brain.modelId, {
@@ -76,11 +49,7 @@ export function createPlanMonthJob({ db, config }: WorkerDependencies) {
     await context.recordUsage(usage);
     if (slots.length === 0) return;
 
-    const items = await db
-      .insert(contentItems)
-      .values(slots.map((slot) => ({ ...slot, brandId, strategyId, status: 'suggested' as const })))
-      .returning({ id: contentItems.id });
-    for (const { id: itemId } of items) {
+    for (const itemId of await insertSuggestedItems(db, brandId, strategyId, slots)) {
       await context.enqueue(
         'item.generate',
         { brandId, itemId, targetVersion: 1 },

@@ -3,9 +3,9 @@ import {
   createStrategy,
   defineJob,
   getBrandDna,
+  insertStrategy,
   resolveModels,
 } from '@openlumo/core';
-import { strategies } from '@openlumo/db';
 import type { WorkerDependencies } from '../worker-dependencies';
 
 const PLAN_DAYS = 30;
@@ -25,12 +25,12 @@ export function createStrategyCreateJob({ db, config, boss }: WorkerDependencies
     });
     await context.recordUsage(usage);
 
-    const [strategy] = await db.insert(strategies).values({ brandId, goal, channels, document }).returning();
+    const strategy = await insertStrategy(db, { brandId, goal, channels, document });
     await boss.schedule('plan.top-up', '0 6 * * 1', { brandId }, { key: brandId });
     await context.enqueue(
       'plan.month',
-      { brandId, strategyId: strategy!.id, from: new Date().toISOString(), days: PLAN_DAYS },
-      { idempotencyKey: `plan-month:${strategy!.id}` },
+      { brandId, strategyId: strategy.id, from: new Date().toISOString(), days: PLAN_DAYS },
+      { idempotencyKey: `plan-month:${strategy.id}` },
     );
   });
 }

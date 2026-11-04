@@ -1,12 +1,11 @@
-import { eq } from 'drizzle-orm';
 import {
   defineJob,
   loadCrawlSources,
   resolveModels,
   saveBrandDna,
+  setBrandStatus,
   synthesizeBrandDna,
 } from '@openlumo/core';
-import { brands } from '@openlumo/db';
 import { fallBackToManualInput } from './brand-fallback';
 import type { WorkerDependencies } from '../worker-dependencies';
 
@@ -23,7 +22,7 @@ export function createBrandSynthesizeDnaJob({ db, config }: WorkerDependencies) 
       await context.recordUsage(usage);
 
       await saveBrandDna(db, brandId, crawl.logoAssetId ? { ...dna, visuals: { ...dna.visuals, logoAssetId: crawl.logoAssetId } } : dna);
-      await db.update(brands).set({ status: 'ready' }).where(eq(brands.id, brandId));
+      await setBrandStatus(db, brandId, 'ready');
     },
     { onFailed: ({ brandId }) => fallBackToManualInput(db, brandId) },
   );

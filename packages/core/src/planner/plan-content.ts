@@ -1,3 +1,4 @@
+import { DAY_MS } from '../time';
 import { generateObject, type LanguageModel, type Usage } from '@openlumo/providers';
 import type { BrandDna } from '../brand-dna/brand-dna-schema';
 import { channelFormats } from './channel-formats';
@@ -5,7 +6,6 @@ import { type PlannedSlot, plannedSlotsSchema } from './plan-schema';
 import { buildPlanMessages } from './planner-prompts';
 import type { StrategyDocument } from './strategy-schema';
 
-const DAY_MS = 86_400_000;
 const DEFAULT_TIME = '09:00';
 
 export async function planContent(
