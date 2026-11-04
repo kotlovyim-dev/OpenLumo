@@ -10,8 +10,11 @@ import {
   type Config,
   type JobContext,
   createAssetStorage,
+  addDnaFeedback,
   createBrand,
   getBrandDna,
+  listOpenFeedbackNotes,
+  setBrandStatus,
   loadConfig,
 } from '@openlumo/core';
 import { assets, brandMembers, brandSources, brands, users, type Database } from '@openlumo/db';
@@ -216,5 +219,65 @@ describe('brand jobs', () => {
     expect(brand.status).toBe('needs_input');
     const members = await db.select().from(brandMembers).where(eq(brandMembers.brandId, brand.id));
     expect(members).toEqual([{ brandId: brand.id, userId: 'u1', role: 'owner' }]);
+  });
+
+  describe('feedback merge', () => {
+    async function readyBrand() {
+      const brand = await createBrand(db, { name: 'Merge Co', createdBy: 'u1' });
+      await createBrandSynthesizeDnaJob(deps()).run({ brandId: brand.id }, context);
+      await setBrandStatus(db, brand.id, 'ready');
+      return brand;
+    }
+
+    it('merges open notes into the DNA, bumps the version and marks them merged', async () => {
+      const brand = await readyBrand();
+      const before = await getBrandDna(db, brand.id);
+      await addDnaFeedback(db, brand.id, 'Sound friendlier');
+      const steps: string[] = [];
+      const original = fakeResponses.merged_brand_dna!;
+      fakeResponses.merged_brand_dna = (request) => ({
+        ...(original(request) as object),
+        identity: { ...(before!.dna.identity), tagline: 'Merged tagline' },
+      });
+      try {
+        await createBrandSynthesizeDnaJob(deps()).run(
+          { brandId: brand.id, mergeFeedback: true },
+          { ...context, reportProgress: async (step) => void steps.push(step) },
+        );
+      } finally {
+        fakeResponses.merged_brand_dna = original;
+      }
+
+      const after = await getBrandDna(db, brand.id);
+      expect(after?.dna.identity.tagline).toBe('Merged tagline');
+      expect(after?.version).toBe(before!.version + 1);
+      expect(await listOpenFeedbackNotes(db, brand.id)).toEqual([]);
+      expect(steps).toEqual(['Applying your feedback']);
+      expect(await brandStatus(brand.id)).toBe('ready');
+    });
+
+    it('succeeds without a model call or version bump when there are no open notes', async () => {
+      const brand = await readyBrand();
+      const before = await getBrandDna(db, brand.id);
+      const original = fakeResponses.merged_brand_dna!;
+      fakeResponses.merged_brand_dna = () => {
+        throw new Error('model must not be called');
+      };
+      try {
+        await createBrandSynthesizeDnaJob(deps()).run({ brandId: brand.id, mergeFeedback: true }, context);
+      } finally {
+        fakeResponses.merged_brand_dna = original;
+      }
+      expect((await getBrandDna(db, brand.id))?.version).toBe(before!.version);
+    });
+
+    it('keeps the brand ready and the notes open when the merge fails', async () => {
+      const brand = await readyBrand();
+      await addDnaFeedback(db, brand.id, 'Be bolder');
+      const job = createBrandSynthesizeDnaJob(deps());
+      await job.onFailed!({ brandId: brand.id, mergeFeedback: true }, { code: 'unauthorized', message: 'x' });
+      expect(await brandStatus(brand.id)).toBe('ready');
+      expect(await listOpenFeedbackNotes(db, brand.id)).toHaveLength(1);
+    });
   });
 });
