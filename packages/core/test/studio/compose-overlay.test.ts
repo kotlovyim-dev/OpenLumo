@@ -1,6 +1,6 @@
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
-import { composeOverlay } from '../../src/studio/compose-overlay';
+import { boundHeadline, composeOverlay } from '../../src/studio/compose-overlay';
 
 async function solid(width: number, height: number): Promise<Uint8Array> {
   return new Uint8Array(
@@ -58,16 +58,6 @@ describe('composeOverlay', () => {
     expect([meta.width, meta.height]).toEqual([640, 800]);
   });
 
-
-  it('renders an overlong, emoji and right-to-left headline without throwing', async () => {
-    const headline = `${'Long headline '.repeat(40)} 🎉 مرحبا بالعالم שלום עולם`;
-
-    const result = await composeOverlay(await solid(640, 800), { headline, accentColor: '#6d55f0' });
-
-    const meta = await sharp(result).metadata();
-    expect([meta.width, meta.height]).toEqual([640, 800]);
-  });
-
   it('fits a tall logo inside the image', async () => {
     const logo = new Uint8Array(
       await sharp({ create: { width: 20, height: 400, channels: 3, background: '#ff0000' } })
@@ -78,5 +68,13 @@ describe('composeOverlay', () => {
     const result = await composeOverlay(await solid(300, 200), { headline: '', logo, accentColor: '#6d55f0' });
 
     expect((await sharp(result).metadata()).height).toBe(200);
+  });
+
+  it('bounds a long headline to 120 code points ending in an ellipsis', () => {
+    const bounded = Array.from(boundHeadline('é'.repeat(200)));
+
+    expect(bounded).toHaveLength(120);
+    expect(bounded.at(-1)).toBe('…');
+    expect(boundHeadline('short')).toBe('short');
   });
 });

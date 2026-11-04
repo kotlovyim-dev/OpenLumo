@@ -16,9 +16,9 @@ function loadFont(): Promise<Buffer> {
   return fontData;
 }
 
-function boundHeadline(headline: string): string {
+export function boundHeadline(headline: string): string {
   const characters = Array.from(headline);
-  return characters.length > MAX_HEADLINE_LENGTH ? `${characters.slice(0, MAX_HEADLINE_LENGTH - 1).join('')}…` : headline;
+  return characters.length > MAX_HEADLINE_LENGTH ? `${characters.slice(0, MAX_HEADLINE_LENGTH - 1).join('')}\u2026` : headline;
 }
 
 type Overlay = { headline: string; logo?: Uint8Array; accentColor: string };
