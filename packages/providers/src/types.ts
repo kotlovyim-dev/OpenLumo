@@ -9,6 +9,8 @@ export type ToolDefinition = { name: string; description: string; parameters: ob
 
 export type ToolCall = { id: string; name: string; arguments: unknown };
 
+export type Citation = { url: string; title: string };
+
 export type Usage = { inputTokens: number; outputTokens: number; costUsd: number };
 
 export type TextRequest = {
@@ -16,10 +18,11 @@ export type TextRequest = {
   messages: Message[];
   jsonSchema?: { name: string; schema: object };
   tools?: ToolDefinition[];
+  webSearch?: { maxResults: number };
   signal?: AbortSignal;
 };
 
-export type TextResult = { text: string; toolCalls: ToolCall[]; usage: Usage };
+export type TextResult = { text: string; toolCalls: ToolCall[]; usage: Usage; citations?: Citation[] };
 
 export type AspectRatio = '1:1' | '4:5' | '9:16' | '16:9';
 

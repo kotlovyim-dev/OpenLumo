@@ -40,6 +40,45 @@ describe('OpenRouter language model', () => {
     expect(result.usage.costUsd).toBe(0);
   });
 
+  it('sends the web plugin when web search is requested', async () => {
+    const { fetchImplementation, calls } = stubFetch(() => jsonResponse(textCompletion));
+    await createOpenRouter('k', fetchImplementation).complete({ model: 'm', messages, webSearch: { maxResults: 8 } });
+    expect(calls[0]?.body.plugins).toEqual([{ id: 'web', max_results: 8 }]);
+  });
+
+  it('leaves requests without web search free of plugins', async () => {
+    const { fetchImplementation, calls } = stubFetch(() => jsonResponse(textCompletion));
+    await createOpenRouter('k', fetchImplementation).complete({ model: 'm', messages });
+    expect(calls[0]?.body).not.toHaveProperty('plugins');
+  });
+
+  it('reads web url citations from annotations', async () => {
+    const citation = (url: string, title: string) => ({ type: 'url_citation', url_citation: { url, title, content: 'x' } });
+    const { fetchImplementation } = stubFetch(() =>
+      jsonResponse({
+        choices: [
+          {
+            message: {
+              content: 'brief',
+              annotations: [
+                citation('https://news.example/a', 'A'),
+                citation('https://news.example/a', 'A again'),
+                citation('javascript:alert(1)', 'Bad'),
+                { type: 'file', file: {} },
+                citation('http://blog.example/b', 'B'),
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    const result = await createOpenRouter('k', fetchImplementation).complete({ model: 'm', messages, webSearch: { maxResults: 8 } });
+    expect(result.citations).toEqual([
+      { url: 'https://news.example/a', title: 'A' },
+      { url: 'http://blog.example/b', title: 'B' },
+    ]);
+  });
+
   it('sends a strict json_schema response format', async () => {
     const { fetchImplementation, calls } = stubFetch(() => jsonResponse(textCompletion));
     const schema = { type: 'object', properties: {} };

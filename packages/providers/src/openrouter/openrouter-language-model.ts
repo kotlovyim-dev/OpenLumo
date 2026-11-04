@@ -1,12 +1,16 @@
 import { ProviderError } from '../provider-error';
-import type { LanguageModel, Message, TextRequest, TextResult, ToolCall } from '../types';
+import type { Citation, LanguageModel, Message, TextRequest, TextResult, ToolCall } from '../types';
 import type { OpenRouterClient } from './openrouter-client';
 import { readUsage, type WireUsage } from './usage';
 
 type WireToolCall = { id: string; function: { name: string; arguments: string } };
 
+type WireAnnotation = { type?: string; url_citation?: { url?: string; title?: string } };
+
 type ChatResponse = {
-  choices?: { message?: { content?: string | null; tool_calls?: WireToolCall[] } }[];
+  choices?: {
+    message?: { content?: string | null; tool_calls?: WireToolCall[]; annotations?: WireAnnotation[] };
+  }[];
   usage?: WireUsage;
 };
 
@@ -30,6 +34,24 @@ function parseToolCall(raw: WireToolCall): ToolCall {
   }
 }
 
+function isWebAddress(value: string): boolean {
+  try {
+    return ['http:', 'https:'].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
+}
+
+function readCitations(annotations: WireAnnotation[]): Citation[] {
+  const citations = new Map<string, Citation>();
+  for (const annotation of annotations) {
+    const url = annotation.type === 'url_citation' ? annotation.url_citation?.url : undefined;
+    if (!url || !isWebAddress(url) || citations.has(url)) continue;
+    citations.set(url, { url, title: annotation.url_citation?.title ?? '' });
+  }
+  return [...citations.values()];
+}
+
 export function createOpenRouterLanguageModel(client: OpenRouterClient): LanguageModel {
   return {
     async complete(request: TextRequest): Promise<TextResult> {
@@ -46,6 +68,9 @@ export function createOpenRouterLanguageModel(client: OpenRouterClient): Languag
       if (request.tools) {
         body.tools = request.tools.map((tool) => ({ type: 'function', function: tool }));
       }
+      if (request.webSearch) {
+        body.plugins = [{ id: 'web', max_results: request.webSearch.maxResults }];
+      }
       const response = await client.post<ChatResponse>('/chat/completions', body, request.signal);
       const message = response.choices?.[0]?.message;
       if (!message) throw new ProviderError('invalid_output', 'Response has no message');
@@ -53,6 +78,7 @@ export function createOpenRouterLanguageModel(client: OpenRouterClient): Languag
         text: message.content ?? '',
         toolCalls: (message.tool_calls ?? []).map(parseToolCall),
         usage: readUsage(response.usage),
+        ...(message.annotations && { citations: readCitations(message.annotations) }),
       };
     },
   };
