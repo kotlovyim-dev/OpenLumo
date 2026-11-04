@@ -25,7 +25,7 @@ export const jobPayloads = {
     scope: z.enum(['copy', 'image', 'all']),
     feedback: z.string().optional(),
   }),
-  'export.bundle': brandPayload,
+  'export.bundle': brandPayload.extend({ itemIds: z.array(z.uuid()).min(1).max(200) }),
   'chat.reply': brandPayload,
 } as const satisfies Record<JobName, z.ZodType>;
 

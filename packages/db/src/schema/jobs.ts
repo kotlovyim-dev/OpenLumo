@@ -1,6 +1,6 @@
 import { integer, numeric, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { brands } from './brands';
-import { contentItems } from './content';
+import { assets, contentItems } from './content';
 
 export const jobStatus = pgEnum('job_status', ['queued', 'running', 'succeeded', 'failed']);
 
@@ -19,6 +19,7 @@ export const jobRuns = pgTable('job_runs', {
   errorCode: text('error_code'),
   costUsd: numeric('cost_usd', { precision: 12, scale: 6, mode: 'number' }).notNull().default(0),
   idempotencyKey: text('idempotency_key').unique(),
+  resultAssetId: uuid('result_asset_id').references(() => assets.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

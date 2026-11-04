@@ -33,3 +33,4 @@ export * from './planner/plan-schema';
 export * from './planner/plan-content';
 export * from './planner/brand-not-ready-error';
 export * from './workspace/request-regeneration';
+export * from './export/build-export-bundle';

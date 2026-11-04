@@ -163,7 +163,7 @@ describe('job runtime', { timeout: 30_000 }, () => {
 
     const fatalRun = await enqueue(boss, db, 'brand.synthesize-dna', { brandId });
     await waitForRun(db, fatalRun, 'failed');
-    const retriedRun = await enqueue(boss, db, 'export.bundle', { brandId });
+    const retriedRun = await enqueue(boss, db, 'export.bundle', { brandId, itemIds: [randomUUID()] });
     const run = await waitForRun(db, retriedRun, 'failed');
 
     expect(run.errorCode).toBe('rate_limited');

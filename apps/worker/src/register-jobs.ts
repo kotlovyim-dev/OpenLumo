@@ -1,6 +1,7 @@
 import type { JobDefinition } from '@openlumo/core';
 import { createBrandCrawlJob } from './jobs/brand-crawl';
 import { createBrandSynthesizeDnaJob } from './jobs/brand-synthesize-dna';
+import { createExportBundleJob } from './jobs/export-bundle';
 import { createItemGenerateJob } from './jobs/item-generate';
 import { createItemRegenerateJob } from './jobs/item-regenerate';
 import { createPlanMonthJob } from './jobs/plan-month';
@@ -17,5 +18,6 @@ export function createJobDefinitions(deps: WorkerDependencies): JobDefinition[] 
     createPlanTopUpJob(deps),
     createItemGenerateJob(deps),
     createItemRegenerateJob(deps),
+    createExportBundleJob(deps),
   ] as JobDefinition[];
 }
