@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenLumo · open-source AI marketing studio</title>
+<meta name="description" content="OpenLumo is an open-source, self-hosted AI marketing studio. Paste a link and Lumo plans, writes and draws a month of ads, posts, emails and articles, then waits for your yes.">
+<meta property="og:title" content="OpenLumo · one link in, a month of marketing out">
+<meta property="og:description" content="Open-source, self-hosted AI marketing studio. MIT licensed. Bring your own OpenRouter key.">
+<meta property="og:image" content="assets/banner1.jpg">
+<meta name="theme-color" content="#0B0A12">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>document.documentElement.classList.add('js')</script>
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="bar">
+  <a class="wordmark" href="#top" aria-label="OpenLumo, back to top">
+    <img src="assets/lumo-mark.svg" alt="" width="52" height="40">
+    <span>OpenLumo</span>
+  </a>
+  <nav class="bar-links" aria-label="Sections">
+    <a href="#channels">Channels</a>
+    <a href="#how">How it works</a>
+    <a href="#self-host">Self-host</a>
+    <a href="#roadmap">Roadmap</a>
+  </nav>
+  <a class="button button-small" href="https://github.com/kotlovyim-dev/OpenLumo" data-stars>Star on GitHub</a>
+</header>
+
+<main id="main">
+
+<section class="hero chapter" id="top" data-ground="#0B0A12" data-ink="#EDEBF7">
+  <div class="grid hero-top">
+    <h1 class="hero-title" data-reveal>One link in.<br>A month out.</h1>
+    <div class="hero-side">
+      <p class="lede" data-reveal style="--d:1">OpenLumo is an open-source AI marketing studio you run yourself. Paste your website and Lumo plans, writes and draws a month of ads, posts, emails and articles, then waits for your yes.</p>
+      <div class="actions" data-reveal style="--d:2">
+        <a class="button" href="https://github.com/kotlovyim-dev/OpenLumo">Get it on GitHub</a>
+        <a class="button button-quiet" href="#self-host">Run it with Docker</a>
+      </div>
+    </div>
+  </div>
+  <figure class="hero-picture" data-reveal style="--d:2">
+    <img src="assets/hero1.jpg" alt="Lumo, a small lilac prism character, splits a beam of white light from a browser window into a rainbow of ad, post and email cards that other Lumos pin to a board" width="1376" height="768" fetchpriority="high" data-drift>
+  </figure>
+  <ul class="facts grid" data-reveal>
+    <li><span class="dot" style="--c:var(--coral)"></span>MIT licensed, every line of it</li>
+    <li><span class="dot" style="--c:var(--sun)"></span>Runs on your machine with Docker Compose</li>
+    <li><span class="dot" style="--c:var(--sky)"></span>Bring your own OpenRouter key</li>
+  </ul>
+</section>
+
+<section class="channels chapter" id="channels" data-ground="#0B0A12" data-ink="#EDEBF7">
+  <div class="grid">
+    <div class="channels-intro">
+      <h2 class="h2" data-reveal>One voice, five colours.</h2>
+      <p data-reveal style="--d:1">Each band of light leaving Lumo's prism is a channel. Ads, posts, articles and emails are all written from one Brand DNA, so they sound like the same company on every one of them.</p>
+    </div>
+    <ul class="tiles">
+      <li class="tile" data-reveal style="--c:var(--coral)">
+        <div class="tile-field"><img src="assets/ads1.jpg" alt="Lumo cheering under a phone that shows rising coral bars" width="896" height="1200" loading="lazy"></div>
+        <h3>Ads</h3>
+        <p>Static ads with a headline, copy and an image drawn to match.</p>
+      </li>
+      <li class="tile tile-wide" data-reveal style="--c:var(--amber);--d:1">
+        <div class="tile-field">
+          <img src="assets/brand1.jpg" alt="Lumo taking a selfie in front of a wall of pastel social posts" width="896" height="1200" loading="lazy">
+          <article class="post" data-ui>
+            <div class="post-image"><span>Image drawn by Lumo</span></div>
+            <p class="post-meta"><span class="dot" style="--c:var(--amber)"></span>Instagram · Carousel</p>
+            <p class="post-text">Still warm from the oven. Come say hello before the sun is up.</p>
+            <p class="post-date">Thu, Nov 5 · 07:30</p>
+          </article>
+        </div>
+        <h3>Socials</h3>
+        <p>Posts and carousels for Instagram, LinkedIn, X, TikTok and Facebook, spread across the month.</p>
+      </li>
+      <li class="tile" data-reveal style="--c:var(--sun)">
+        <div class="tile-field"><img src="assets/seo1.jpg" alt="Lumo looking through a magnifying glass at a glowing ranking" width="896" height="1200" loading="lazy"></div>
+        <h3>SEO and blog</h3>
+        <p>Long articles built around what your audience is searching for.</p>
+      </li>
+      <li class="tile" data-reveal style="--c:var(--mint);--d:1">
+        <div class="tile-field"><img src="assets/email1.jpg" alt="Lumo launching a mint paper plane along a rising line" width="896" height="1200" loading="lazy"></div>
+        <h3>Email</h3>
+        <p>Newsletters and campaigns in your voice, ready to paste into your sender.</p>
+      </li>
+      <li class="tile" data-reveal style="--c:var(--sky);--d:2">
+        <div class="tile-field"><img src="assets/dna.jpg" alt="Lumo holding a fan of colour swatches beside a speech bubble and an image card" width="896" height="1200" loading="lazy"></div>
+        <h3>Brand DNA</h3>
+        <p>Name, voice, audience and three to five competitors, each with its source link.</p>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section class="how" id="how" aria-labelledby="how-title">
+  <div class="how-field chapter" data-ground="#F1EDFF" data-ink="#26204A" style="--f:var(--pale)">
+    <h2 id="how-title" class="how-title">How Lumo works</h2>
+    <article class="card" data-ui data-reveal>
+      <p class="card-head"><span class="card-logo">S</span>Sunrise Bakery</p>
+      <p class="card-url">https://sunrisebakery.example</p>
+      <p class="card-row card-busy"><span>Reading pages</span><b>7 of 10</b></p>
+    </article>
+    <p class="how-step">First it reads<br>your website.</p>
+  </div>
+  <div class="how-field chapter" data-ground="#FF5F7E" data-ink="#26204A" style="--f:var(--coral)">
+    <article class="card" data-ui data-reveal>
+      <p class="card-head"><span class="card-logo">S</span>Sunrise Bakery</p>
+      <p class="card-url">https://sunrisebakery.example</p>
+      <p class="card-row"><span>Pages read</span><b>10</b></p>
+      <p class="card-row"><span>Competitors</span><b>3, with sources</b></p>
+      <p class="card-row"><span>Audience</span><b>Early commuters</b></p>
+    </article>
+    <p class="how-step">Then it researches<br>the live web.</p>
+  </div>
+  <div class="how-field chapter" data-ground="#FFE156" data-ink="#26204A" style="--f:var(--sun)">
+    <article class="card" data-ui data-reveal>
+      <p class="card-head"><span class="card-logo">S</span>Sunrise Bakery</p>
+      <p class="card-row"><span>Brand DNA</span><b>Ready</b></p>
+      <p class="card-row"><span>Strategy</span><b>4 pillars</b></p>
+      <p class="card-row"><span>November plan</span><b>15 drafts</b></p>
+      <p class="card-split"><i style="--c:var(--coral);--w:3"></i><i style="--c:var(--amber);--w:8"></i><i style="--c:var(--sun);--w:2"></i><i style="--c:var(--mint);--w:2"></i></p>
+    </article>
+    <p class="how-step">Then it plans<br>and drafts the month.</p>
+  </div>
+  <div class="how-field chapter" data-ground="#4AA3FF" data-ink="#26204A" style="--f:var(--sky)">
+    <article class="card" data-ui data-reveal>
+      <p class="card-head"><span class="card-logo">S</span>Sunrise Bakery</p>
+      <p class="card-row"><span>Approved</span><b>12</b></p>
+      <p class="card-row"><span>Rejected</span><b>3</b></p>
+      <p class="card-row"><span>Export</span><b>12 items, ZIP</b></p>
+      <p class="card-done">Ready to download</p>
+    </article>
+    <p class="how-step">Then you say yes,<br>one card at a time.</p>
+  </div>
+</section>
+
+<section class="veto" id="board" aria-labelledby="veto-title">
+  <div class="veto-text chapter" data-ground="#F1EDFF" data-ink="#26204A">
+    <h2 id="veto-title" class="h2" data-reveal>You keep the veto.</h2>
+    <p data-reveal style="--d:1">Every draft lands on a board. Approve it, ask Lumo to write it again, or turn it down. Nothing leaves the board without an explicit yes. Try it on four drafts for a sample bakery.</p>
+    <p class="tally" aria-live="polite"><b data-count="approved">0</b> approved <span>·</span> <b data-count="waiting">4</b> waiting <span>·</span> <b data-count="rejected">0</b> turned down</p>
+  </div>
+  <div class="veto-board chapter" data-ground="#14121F" data-ink="#EDEBF7">
+    <div class="board" data-ui data-board>
+      <div class="board-col">
+        <p class="board-head">Suggested <span data-col-count="suggested">4</span></p>
+        <ol class="board-list" data-list="suggested">
+          <li class="draft" style="--c:var(--amber)" data-alt="Croissants out at 6:30. The queue is short if you're early.|The first tray is always the flakiest. Doors open at 6:30.">
+            <p class="draft-meta"><span class="dot"></span>Instagram · Social post</p>
+            <p class="draft-text">Still warm from the oven. Come say hello before the sun is up.</p>
+            <div class="draft-actions"><button type="button" data-act="approve">Approve</button><button type="button" data-act="redo">Write again</button><button type="button" data-act="reject">Reject</button></div>
+          </li>
+          <li class="draft" style="--c:var(--coral)" data-alt="Rye, spelt and sourdough, baked every morning. 10% off your first loaf.|Bread that tastes like the bakery smells. First loaf 10% off this week.">
+            <p class="draft-meta"><span class="dot"></span>Facebook · Static ad</p>
+            <p class="draft-text">Real sourdough, baked at 5 every morning. First loaf 10% off.</p>
+            <div class="draft-actions"><button type="button" data-act="approve">Approve</button><button type="button" data-act="redo">Write again</button><button type="button" data-act="reject">Reject</button></div>
+          </li>
+          <li class="draft" style="--c:var(--mint)" data-alt="Subject: Our winter bread menu is here|Subject: Three new loaves for colder mornings">
+            <p class="draft-meta"><span class="dot"></span>Email · Newsletter</p>
+            <p class="draft-text">Subject: What we bake when it gets cold outside</p>
+            <div class="draft-actions"><button type="button" data-act="approve">Approve</button><button type="button" data-act="redo">Write again</button><button type="button" data-act="reject">Reject</button></div>
+          </li>
+          <li class="draft" style="--c:var(--sun)" data-alt="Why sourdough keeps longer than supermarket bread|Starter, flour, salt, time: how our sourdough is made">
+            <p class="draft-meta"><span class="dot"></span>Blog · Article</p>
+            <p class="draft-text">How long should sourdough rise? A baker's honest answer</p>
+            <div class="draft-actions"><button type="button" data-act="approve">Approve</button><button type="button" data-act="redo">Write again</button><button type="button" data-act="reject">Reject</button></div>
+          </li>
+        </ol>
+      </div>
+      <div class="board-col">
+        <p class="board-head">Approved <span data-col-count="approved">0</span></p>
+        <ol class="board-list" data-list="approved"></ol>
+        <p class="board-empty" data-empty>Approved drafts land here, ready to export.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="about chapter" id="open" data-ground="#0B0A12" data-ink="#EDEBF7" aria-labelledby="about-title">
+  <div class="grid">
+    <h2 id="about-title" class="h2 about-title" data-reveal>Yours to run, read and change.</h2>
+    <p class="statement" data-reveal style="--d:1"><strong>OpenLumo</strong> is the whole studio, not a demo of one. It runs on your own machine or server with <mark style="--c:var(--sun)">Docker Compose</mark>: Postgres, a Next.js web app, and a worker that does the slow work in the background while progress streams live to the page. Models come through <mark style="--c:var(--coral)">your own OpenRouter key</mark>, stored encrypted and never sent to the browser. You choose the brain that writes and the model that draws, and every job shows <mark style="--c:var(--mint)">what it cost</mark>. Your brands, drafts and images stay <mark style="--c:var(--amber)">on your disk</mark>. The code is <mark style="--c:var(--sky)">MIT licensed</mark>, the job queue is plain Postgres, and the model adapters are typed by capability, so local models can slot in next. <a class="statement-link" href="https://github.com/kotlovyim-dev/OpenLumo"><mark style="--c:var(--lilac)">Read the code, fork it, send a pull request.</mark></a></p>
+  </div>
+</section>
+
+<section class="setup chapter" id="self-host" data-ground="#F1EDFF" data-ink="#26204A" aria-labelledby="setup-title">
+  <div class="setup-head">
+    <h2 id="setup-title" class="h2" data-reveal>Running in<br>four steps.</h2>
+    <a class="button button-ink" href="https://github.com/kotlovyim-dev/OpenLumo#quick-start">Read the README</a>
+  </div>
+  <div class="setup-body">
+    <div class="tabs" role="tablist" aria-label="Ways to run OpenLumo">
+      <button type="button" role="tab" id="tab-docker" aria-controls="panel-docker" aria-selected="true">Docker<small>for using it</small></button>
+      <button type="button" role="tab" id="tab-source" aria-controls="panel-source" aria-selected="false" tabindex="-1">From source<small>for hacking on it</small></button>
+    </div>
+    <ol class="bands" id="panel-docker" role="tabpanel" aria-labelledby="tab-docker">
+      <li class="band"><code>git clone https://github.com/kotlovyim-dev/OpenLumo.git</code><div><b>Get the code</b><span>You need Docker with Compose and an OpenRouter key.</span></div><button type="button" class="copy" data-copy="git clone https://github.com/kotlovyim-dev/OpenLumo.git">Copy</button></li>
+      <li class="band"><code>cp .env.example .env</code><div><b>Copy the settings</b><span>Set APP_SECRET to a random string of 32 characters or more.</span></div><button type="button" class="copy" data-copy="cp .env.example .env">Copy</button></li>
+      <li class="band"><code>docker compose up</code><div><b>Start everything</b><span>Postgres, the migrations, the web app and the worker.</span></div><button type="button" class="copy" data-copy="docker compose up">Copy</button></li>
+      <li class="band"><code>http://localhost:3000</code><div><b>Create the first account</b><span>It becomes the admin. Paste your key, pick the brain and image models.</span></div><button type="button" class="copy" data-copy="http://localhost:3000">Copy</button></li>
+    </ol>
+    <ol class="bands" id="panel-source" role="tabpanel" aria-labelledby="tab-source" hidden>
+      <li class="band"><code>corepack enable &amp;&amp; pnpm install</code><div><b>Install</b><span>Node.js 22 or newer, pnpm through Corepack.</span></div><button type="button" class="copy" data-copy="corepack enable && pnpm install">Copy</button></li>
+      <li class="band"><code>cp .env.example .env</code><div><b>Copy the settings</b><span>The same file the Docker setup uses.</span></div><button type="button" class="copy" data-copy="cp .env.example .env">Copy</button></li>
+      <li class="band"><code>docker compose up -d postgres &amp;&amp; pnpm db:migrate</code><div><b>Start Postgres</b><span>Only the database runs in Docker.</span></div><button type="button" class="copy" data-copy="docker compose up -d postgres && pnpm db:migrate">Copy</button></li>
+      <li class="band"><code>pnpm dev</code><div><b>Run in watch mode</b><span>The web app on port 3000 and the worker, side by side.</span></div><button type="button" class="copy" data-copy="pnpm dev">Copy</button></li>
+    </ol>
+  </div>
+</section>
+
+<section class="roadmap chapter" id="roadmap" data-ground="#FFE156" data-ink="#26204A" aria-labelledby="roadmap-title">
+  <div class="grid">
+    <div class="roadmap-intro">
+      <h2 id="roadmap-title" class="h2" data-reveal>What Lumo learns next.</h2>
+      <p data-reveal style="--d:1">Version 0.1 researches, plans, drafts and exports. It does not post for you yet, and it says so. This is the order the rest arrives in.</p>
+      <figure class="sheet" data-reveal style="--d:2">
+        <img src="assets/lumo.jpg" alt="Lumo's character sheet: front, three-quarter, side and back views, and six expressions" width="1200" height="896" loading="lazy">
+      </figure>
+    </div>
+    <ol class="plan">
+      <li data-reveal><b>Publishing</b><span>OAuth connections and native posting for LinkedIn, X, Instagram, Facebook and email providers.</span></li>
+      <li data-reveal><b>Analytics and a learning loop</b><span>Import performance data, report what worked, feed the results back into planning.</span></li>
+      <li data-reveal><b>Autopilot</b><span>Automatic approval per channel, with guardrails you set.</span></li>
+      <li data-reveal><b>Video and audio</b><span>Short video ads, voiceover and music through OpenRouter video and speech models.</span></li>
+      <li data-reveal><b>Local models</b><span>Ollama and LM Studio for the brain, ComfyUI for images and video, local speech.</span></li>
+      <li data-reveal><b>Languages and competitor tracking</b><span>Localised content, and competitors watched over time instead of once.</span></li>
+    </ol>
+  </div>
+</section>
+
+<section class="closing chapter" id="start" data-ground="#9F8CF0" data-ink="#26204A" aria-labelledby="closing-title">
+  <div class="grid closing-grid">
+    <div class="closing-text">
+      <h2 id="closing-title" class="display" data-reveal>Your link.<br>Your machine.</h2>
+      <p data-reveal style="--d:1">Clone the repository, run docker compose up, and this form is the first thing Lumo shows you.</p>
+    </div>
+    <form class="dialog" data-ui data-dialog action="https://github.com/kotlovyim-dev/OpenLumo#quick-start">
+      <p class="dialog-title">New brand</p>
+      <div class="segmented" role="radiogroup" aria-label="How to start">
+        <button type="button" role="radio" aria-checked="true" data-mode="website">From a link</button>
+        <button type="button" role="radio" aria-checked="false" data-mode="manual">Describe it myself</button>
+      </div>
+      <label class="dialog-label" for="dialog-field" data-label>Website</label>
+      <input class="dialog-input" id="dialog-field" type="text" value="https://sunrisebakery.example" spellcheck="false" autocomplete="off">
+      <p class="dialog-help" data-help>Paste a link. Lumo reads your site and researches the web for your name, features, audience and competitors.</p>
+      <button class="dialog-submit" type="submit">Get OpenLumo on GitHub</button>
+    </form>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer chapter" data-ground="#0B0A12" data-ink="#EDEBF7">
+  <a class="blocks" href="#top" aria-label="OpenLumo, back to top">
+    <span style="--c:var(--coral);--h:78%">O</span><span style="--c:var(--amber);--h:92%">P</span><span style="--c:var(--sun);--h:66%">E</span><span style="--c:var(--mint);--h:100%">N</span><span style="--c:var(--sky);--h:84%">L</span><span style="--c:var(--lilac);--h:70%">U</span><span style="--c:var(--violet);--h:95%">M</span><span style="--c:var(--pale);--h:80%">O</span>
+  </a>
+  <div class="footer-links">
+    <div>
+      <h2>Project</h2>
+      <a href="https://github.com/kotlovyim-dev/OpenLumo">Repository</a>
+      <a href="https://github.com/kotlovyim-dev/OpenLumo/issues">Issues</a>
+      <a href="https://github.com/kotlovyim-dev/OpenLumo#roadmap">Roadmap</a>
+    </div>
+    <div>
+      <h2>Docs</h2>
+      <a href="https://github.com/kotlovyim-dev/OpenLumo#quick-start">Quick start</a>
+      <a href="https://github.com/kotlovyim-dev/OpenLumo#architecture">Architecture</a>
+      <a href="https://github.com/kotlovyim-dev/OpenLumo#web-research">Web research</a>
+    </div>
+    <div>
+      <h2>Licence</h2>
+      <a href="https://github.com/kotlovyim-dev/OpenLumo/blob/v0.1/LICENSE">MIT License</a>
+      <a href="https://github.com/kotlovyim-dev/OpenLumo/blob/v0.1/TRADEMARKS.md">Trademarks</a>
+    </div>
+    <p class="footer-note">OpenLumo is built in the open. Lumo, the name and the logo are covered by the trademark policy; the code is yours under MIT.</p>
+  </div>
+  <div class="footer-last">
+    <p>© 2026 OpenLumo contributors</p>
+    <a class="button button-small" href="#top">Back to top</a>
+  </div>
+</footer>
+
+<script src="main.js" defer></script>
+</body>
+</html>
