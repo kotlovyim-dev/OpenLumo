@@ -1,10 +1,12 @@
 'use client';
 
+import { LoaderCircle } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createBrandAction } from './actions';
+import { OnboardingSteps } from './onboarding-steps';
 
 type FieldErrors = { name?: string; url?: string };
 
@@ -60,6 +62,11 @@ export function NewBrandForm() {
           <p id="brand-url-error" role="alert" className="min-h-5 text-sm text-danger">
             {fieldErrors.url}
           </p>
+          <div className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4">
+            <p className="text-sm font-semibold">What happens next</p>
+            <OnboardingSteps current={-1} />
+            <p className="text-xs text-muted">Usually a minute or two. You can review and change everything afterwards.</p>
+          </div>
         </div>
       ) : (
         <div className="flex flex-col gap-1.5">
@@ -88,7 +95,8 @@ export function NewBrandForm() {
       )}
       <div className="flex flex-wrap items-center gap-4">
         <Button type="submit" disabled={pending}>
-          {pending ? 'Creating...' : 'Create brand'}
+          {pending && <LoaderCircle className="size-4 animate-spin" aria-hidden />}
+          {pending ? (mode === 'website' ? 'Starting research...' : 'Creating...') : 'Create brand'}
         </Button>
         <button
           type="button"
