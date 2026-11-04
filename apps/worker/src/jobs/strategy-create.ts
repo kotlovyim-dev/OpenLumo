@@ -12,17 +12,22 @@ const PLAN_DAYS = 30;
 
 export function createStrategyCreateJob({ db, config, boss }: WorkerDependencies) {
   return defineJob('strategy.create', async ({ brandId, goal, channels }, context) => {
-    await context.reportProgress('Auditing your brand');
+    await context.reportProgress('dna');
 
     const saved = await getBrandDna(db, brandId);
     if (!saved) throw new BrandNotReadyError(brandId);
 
     const { brain } = await resolveModels(db, config);
-    const { document, usage } = await createStrategy(brain.model, brain.modelId, {
-      dna: saved.dna,
-      goal,
-      channels,
-    });
+    let reported = Promise.resolve();
+    const { document, usage } = await createStrategy(
+      brain.model,
+      brain.modelId,
+      { dna: saved.dna, goal, channels },
+      (section) => {
+        reported = reported.then(() => context.reportProgress(section));
+      },
+    );
+    await reported;
     await context.recordUsage(usage);
 
     const strategy = await insertStrategy(db, { brandId, goal, channels, document });

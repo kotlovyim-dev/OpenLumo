@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { findLatestStrategyId, findStrategy, strategyDocumentSchema } from '@openlumo/core';
 import { requireBrandAccessOrNotFound } from '@/features/brands/brand-access';
 import { PlanMoreButton } from '@/features/strategy/plan-more-button';
+import { StrategyAgent } from '@/features/strategy/strategy-agent';
+import { loadStrategyAgent } from '@/features/strategy/strategy-agent-service';
 import { StrategyPicker } from '@/features/strategy/strategy-picker';
 import { StrategyProgress } from '@/features/strategy/strategy-progress';
 import { StrategyView } from '@/features/strategy/strategy-view';
@@ -16,6 +18,7 @@ export default async function Page({ params }: { params: Promise<{ brandId: stri
   const canEdit = membership.role !== 'viewer';
   const strategyId = await findLatestStrategyId(db, brandId);
   const strategy = strategyId ? await findStrategy(db, strategyId) : undefined;
+  const agent = await loadStrategyAgent(db, brandId, strategy);
 
   return (
     <div className="flex flex-col gap-6">
@@ -23,10 +26,10 @@ export default async function Page({ params }: { params: Promise<{ brandId: stri
         <h1 className="text-2xl font-bold tracking-tight">Strategy</h1>
         {strategy && canEdit && <PlanMoreButton brandId={brandId} />}
       </div>
-      <StrategyProgress brandId={brandId} />
+      {agent ? <StrategyAgent brandId={brandId} snapshot={agent} /> : <StrategyProgress brandId={brandId} />}
       {strategy ? (
         <StrategyView document={strategyDocumentSchema.parse(strategy.document)} />
-      ) : canEdit ? (
+      ) : agent ? null : canEdit ? (
         <StrategyPicker brandId={brandId} />
       ) : (
         <p className="text-sm text-muted">No strategy has been created for this brand yet.</p>

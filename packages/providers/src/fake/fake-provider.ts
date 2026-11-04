@@ -18,6 +18,8 @@ const onePixelPng = Uint8Array.from(
   ),
 );
 
+const STREAM_CHUNK_LENGTH = 24;
+
 const zeroUsage = (): Usage => ({ inputTokens: 0, outputTokens: 0, costUsd: 0 });
 
 type TextResponse = string | TextResult | ProviderError;
@@ -51,9 +53,13 @@ export class FakeProvider implements LanguageModel, ImageModel, ModelCatalog {
       respond?.(request) ?? textResponses[Math.min(this.textCalls, textResponses.length - 1)] ?? '';
     this.textCalls += 1;
     if (response instanceof ProviderError) throw response;
-    return typeof response === 'string'
-      ? { text: response, toolCalls: [], usage: zeroUsage() }
-      : response;
+    const result = typeof response === 'string' ? { text: response, toolCalls: [], usage: zeroUsage() } : response;
+    if (request.onText) {
+      for (let end = STREAM_CHUNK_LENGTH; end < result.text.length + STREAM_CHUNK_LENGTH; end += STREAM_CHUNK_LENGTH) {
+        request.onText(result.text.slice(0, end));
+      }
+    }
+    return result;
   }
 
   async generate(request: ImageRequest): Promise<ImageResult> {

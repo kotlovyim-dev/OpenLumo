@@ -32,7 +32,11 @@ test('signs up, learns a brand, plans content, exports it and chats', async ({ p
   await page.goto(`/brands/${brandId}/strategy`);
   await page.getByRole('checkbox', { name: 'Instagram' }).check();
   await page.getByRole('button', { name: 'Create my strategy' }).click();
+  await expect(page.getByRole('progressbar', { name: 'Strategy progress' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Steps' }).getByRole('listitem')).toHaveCount(8);
   await expect(page.getByRole('heading', { name: 'Content pillars' })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Your strategy and first month are ready' })).toBeVisible({ timeout: 120_000 });
+  await page.screenshot({ path: testInfo.outputPath('strategy-ready.png') });
 
   await page.goto(`/brands/${brandId}/board`);
   const cards = page.locator('article');

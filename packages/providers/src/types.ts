@@ -20,6 +20,7 @@ export type TextRequest = {
   tools?: ToolDefinition[];
   webSearch?: { maxResults: number };
   signal?: AbortSignal;
+  onText?: (textSoFar: string) => void;
 };
 
 export type TextResult = { text: string; toolCalls: ToolCall[]; usage: Usage; citations?: Citation[] };

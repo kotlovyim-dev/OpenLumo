@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import type { Channel, Goal } from '@openlumo/core';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ export function StrategyPicker({ brandId }: { brandId: string }) {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
+  const router = useRouter();
 
   useJobEvents(brandId, (event) => {
     if (event.type !== 'strategy.create' || event.status !== 'failed') return;
@@ -42,10 +44,12 @@ export function StrategyPicker({ brandId }: { brandId: string }) {
     setErrors({});
     try {
       const result = await createStrategyAction(brandId, goal, channels);
-      if (!result.ok) {
-        setPending(false);
-        setErrors(result.fieldErrors ?? { form: 'Something went wrong. Try again.' });
+      if (result.ok) {
+        router.refresh();
+        return;
       }
+      setPending(false);
+      setErrors(result.fieldErrors ?? { form: 'Something went wrong. Try again.' });
     } catch {
       setPending(false);
       setErrors({ form: 'Something went wrong. Try again.' });

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useJobEvents } from '@/hooks/use-job-events';
 
-const watched = new Set(['strategy.create', 'plan.month', 'plan.top-up', 'brand.synthesize-dna']);
+const watched = new Set(['plan.month', 'plan.top-up', 'brand.synthesize-dna']);
 
 export function StrategyProgress({ brandId }: { brandId: string }) {
   const router = useRouter();
