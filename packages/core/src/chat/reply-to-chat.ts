@@ -16,24 +16,29 @@ export type ChatContext = {
 };
 
 const MAX_TOOL_ROUNDS = 3;
-const stoppedReply = 'I stopped after three actions.';
+const MAX_CALLS_PER_ROUND = 3;
+const stoppedReply = 'I stopped after three rounds of actions.';
+const skippedResult = 'Skipped: too many actions in one step.';
 
 export async function replyToChat(
   brain: LanguageModel,
   modelId: string,
   context: ChatContext,
   executeTool: (call: ToolCall) => Promise<string>,
+  onUsage?: (total: Usage) => void,
 ): Promise<{ reply: string; usage: Usage }> {
   let messages: Message[] = [{ role: 'system', content: buildChatSystemPrompt(context) }, ...context.history];
   let usage: Usage = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
   for (let round = 1; ; round += 1) {
     const result = await brain.complete({ model: modelId, messages, tools: chatTools });
     usage = addUsage(usage, result.usage);
+    onUsage?.(usage);
     if (result.toolCalls.length === 0) return { reply: result.text, usage };
     if (round > MAX_TOOL_ROUNDS) return { reply: result.text.trim() || stoppedReply, usage };
     const toolMessages: Message[] = [];
-    for (const call of result.toolCalls) {
-      toolMessages.push({ role: 'tool', toolCallId: call.id, content: await executeTool(call) });
+    for (const [index, call] of result.toolCalls.entries()) {
+      const content = index < MAX_CALLS_PER_ROUND ? await executeTool(call) : skippedResult;
+      toolMessages.push({ role: 'tool', toolCallId: call.id, content });
     }
     messages = [...messages, { role: 'assistant', content: result.text, toolCalls: result.toolCalls }, ...toolMessages];
   }

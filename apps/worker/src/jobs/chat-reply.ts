@@ -41,6 +41,10 @@ function createToolExecutor({ db, boss }: WorkerDependencies, message: ChatMessa
   });
 }
 
+function partialReply(executed: ExecutedToolCall[]): string {
+  return ["I couldn't finish my reply, but I already did this:", ...executed.map((call) => `- ${call.result}`)].join('\n');
+}
+
 export function createChatReplyJob(deps: WorkerDependencies) {
   const { db, config } = deps;
   return defineJob('chat.reply', async ({ brandId, messageId }, context) => {
@@ -53,12 +57,28 @@ export function createChatReplyJob(deps: WorkerDependencies) {
     const { brain } = await resolveModels(db, config);
     const execute = createToolExecutor(deps, message);
     const executed: ExecutedToolCall[] = [];
-    const { reply, usage } = await replyToChat(brain.model, brain.modelId, chatContext, async (call) => {
-      const outcome = await execute(call);
-      executed.push({ ...call, ...outcome });
-      return outcome.result;
-    });
-    await context.recordUsage(usage);
+    let spent = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
+    let reply: string;
+    try {
+      ({ reply } = await replyToChat(
+        brain.model,
+        brain.modelId,
+        chatContext,
+        async (call) => {
+          const outcome = await execute(call);
+          executed.push({ ...call, ...outcome });
+          return outcome.result;
+        },
+        (total) => {
+          spent = total;
+        },
+      ));
+    } catch (error) {
+      if (executed.length === 0) throw error;
+      reply = partialReply(executed);
+    } finally {
+      await context.recordUsage(spent);
+    }
     await insertChatMessage(db, {
       brandId,
       userId: message.userId,

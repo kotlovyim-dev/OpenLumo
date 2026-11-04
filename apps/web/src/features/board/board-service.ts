@@ -1,7 +1,7 @@
 import 'server-only';
 import { and, asc, desc, eq, gte, inArray, isNull, lt, ne, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
-import { itemText, type FormatCopy } from '@openlumo/core';
+import { copyTitle, itemText, type FormatCopy } from '@openlumo/core';
 import { contentItems, itemVersions, jobRuns, type Database } from '@openlumo/db';
 
 type Item = typeof contentItems.$inferSelect;
@@ -42,16 +42,6 @@ export type ItemDetail = {
   text: string | null;
   versions: ItemVersionEntry[];
 };
-
-function cardTitle(copy: unknown): string | null {
-  if (!copy || typeof copy !== 'object') return null;
-  const fields = copy as Record<string, unknown>;
-  const firstSlide = Array.isArray(fields.slides) ? (fields.slides[0] as Record<string, unknown> | undefined) : undefined;
-  const title = [fields.headline, fields.subject, fields.seoTitle, firstSlide?.title, fields.caption].find(
-    (value): value is string => typeof value === 'string' && value.trim() !== '',
-  );
-  return title ?? null;
-}
 
 async function loadCards(db: Database, condition: SQL | undefined): Promise<BoardCard[]> {
   const items = await db
@@ -94,7 +84,7 @@ async function loadCards(db: Database, condition: SQL | undefined): Promise<Boar
     channel: item.channel,
     format: item.format,
     scheduledAt: item.scheduledAt?.toISOString() ?? null,
-    title: cardTitle(item.copy),
+    title: copyTitle(item.copy),
     imageAssetId: item.assetIds?.[0] ?? null,
     run: latestRuns.get(item.id) ?? null,
   }));

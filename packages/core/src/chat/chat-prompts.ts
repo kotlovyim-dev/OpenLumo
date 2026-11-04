@@ -15,7 +15,9 @@ export function buildChatSystemPrompt({ dna, strategy, recentItems }: ChatContex
     chatRules,
     `Allowed formats per channel: ${JSON.stringify(channelFormats)}`,
     `Brand DNA:\n${wrapUntrustedContent('brand_dna', JSON.stringify(dna))}`,
-    strategy ? `Current strategy:\n${JSON.stringify(strategy)}` : 'There is no strategy yet.',
-    `Recent items (newest first):\n${JSON.stringify(recentItems)}`,
+    strategy
+      ? `Current strategy:\n${wrapUntrustedContent('strategy', JSON.stringify(strategy))}`
+      : 'There is no strategy yet.',
+    `Recent items (newest first):\n${wrapUntrustedContent('recent_items', JSON.stringify(recentItems))}`,
   ].join('\n\n');
 }

@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useJobEvents } from '@/hooks/use-job-events';
 import { cn } from '@/lib/utils';
 import { listChatMessages, retryChatReply, sendChatMessage } from './actions';
-import type { ChatEntry, PendingReply } from './chat-service';
+import type { ChatEntry, PendingReply } from './chat-types';
 
 const genericError = 'Something went wrong. Try again.';
 
@@ -35,10 +35,6 @@ export function ChatPanel({ brandId, canSend, maxLength }: { brandId: string; ca
       setError(genericError);
     }
   }, [brandId]);
-
-  useEffect(() => {
-    if (open && messages === null) void load();
-  }, [open, messages, load]);
 
   useEffect(() => {
     if (open) (inputRef.current ?? closeRef.current)?.focus();

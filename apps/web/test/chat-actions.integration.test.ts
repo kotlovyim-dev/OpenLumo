@@ -1,9 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { addBrandMember, createBrand, createQueue, insertChatMessage, type Queue } from '@openlumo/core';
 import { chatMessages, jobRuns, users } from '@openlumo/db';
 import { createTestDatabase } from '@openlumo/db/testing';
 import { listChatMessages, retryChatReply, sendChatMessage } from '../src/features/chat/chat-service';
+
+vi.mock('server-only', () => ({}));
 
 describe('chat actions', () => {
   let database: Awaited<ReturnType<typeof createTestDatabase>>;

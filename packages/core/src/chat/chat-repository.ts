@@ -5,6 +5,7 @@ import { getBrandDna } from '../brand-dna/brand-dna-repository';
 import { BrandNotReadyError } from '../planner/brand-not-ready-error';
 import { findLatestStrategyId, findStrategy } from '../planner/planner-repository';
 import { strategyDocumentSchema } from '../planner/strategy-schema';
+import { copyTitle } from '../workspace/copy-title';
 import type { ToolOutcome } from './chat-tools';
 import type { ChatContext, ChatItem } from './reply-to-chat';
 
@@ -61,16 +62,6 @@ export async function listRecentChatMessages(
     .orderBy(desc(chatMessages.createdAt))
     .limit(limit);
   return rows.reverse();
-}
-
-function copyTitle(copy: unknown): string | null {
-  if (!copy || typeof copy !== 'object') return null;
-  const fields = copy as Record<string, unknown>;
-  const firstSlide = Array.isArray(fields.slides) ? (fields.slides[0] as Record<string, unknown> | undefined) : undefined;
-  const title = [fields.headline, fields.subject, fields.seoTitle, firstSlide?.title, fields.caption].find(
-    (value): value is string => typeof value === 'string' && value.trim() !== '',
-  );
-  return title ?? null;
 }
 
 async function listRecentChatItems(db: Database, brandId: string): Promise<ChatItem[]> {

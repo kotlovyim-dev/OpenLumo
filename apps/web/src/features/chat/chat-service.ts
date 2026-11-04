@@ -1,3 +1,4 @@
+import 'server-only';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import {
@@ -11,18 +12,9 @@ import {
 } from '@openlumo/core';
 import { jobRuns, type Database } from '@openlumo/db';
 import { findBrandAccess } from '../brands/brand-access';
+import type { ChatEntry, PendingReply } from './chat-types';
 
 export type ChatServiceContext = { db: Database; boss: Queue; user: { id: string } };
-
-export type ChatEntry = {
-  id: string;
-  role: ChatMessage['role'];
-  content: string;
-  createdAt: string;
-  changedItems: boolean;
-};
-
-export type PendingReply = { messageId: string; status: 'queued' | 'running' | 'failed'; step: string | null };
 
 export type ChatHistoryResult =
   | { ok: true; messages: ChatEntry[]; pendingReply: PendingReply | null }

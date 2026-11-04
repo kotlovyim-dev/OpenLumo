@@ -34,6 +34,7 @@ export * from './planner/plan-content';
 export * from './planner/brand-not-ready-error';
 export * from './workspace/request-regeneration';
 export * from './workspace/create-on-demand-items';
+export * from './workspace/copy-title';
 export * from './export/build-export-bundle';
 export * from './time';
 export * from './assets/brand-storage-key';

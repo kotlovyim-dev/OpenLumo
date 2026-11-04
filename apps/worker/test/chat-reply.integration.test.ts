@@ -15,7 +15,7 @@ import {
   loadConfig,
   saveBrandDna,
 } from '@openlumo/core';
-import { FakeProvider, type TextRequest, type TextResult } from '@openlumo/providers';
+import { FakeProvider, ProviderError, type TextRequest, type TextResult } from '@openlumo/providers';
 import { chatMessages, contentItems, jobRuns, users, type Database } from '@openlumo/db';
 import { createTestDatabase } from '@openlumo/db/testing';
 import { createChatReplyJob } from '../src/jobs/chat-reply';
@@ -133,6 +133,32 @@ describe('chat.reply', () => {
     expect(requests).toHaveLength(1);
     const replies = await db.select().from(chatMessages).where(eq(chatMessages.replyToId, payload.messageId));
     expect(replies.map((reply) => reply.content)).toEqual(['Hi there']);
+  });
+
+  it('keeps a tool action single-shot when a later round fails with a retryable error', async () => {
+    const payload = await brandWithMessage('Draft a LinkedIn carousel.');
+    const requests = scriptBrain((request) => {
+      if (request.messages.some((message) => message.role === 'tool')) throw new ProviderError('unavailable', 'down');
+      return {
+        text: '',
+        toolCalls: [{ id: 'c1', name: 'create_draft', arguments: { channel: 'linkedin', format: 'carousel', angle: 'How we bake' } }],
+        usage,
+      };
+    });
+    recordUsage.mockClear();
+
+    await job().run(payload, context);
+    await job().run(payload, context);
+
+    const items = await db.select().from(contentItems).where(eq(contentItems.brandId, payload.brandId));
+    expect(items).toHaveLength(1);
+    expect(requests).toHaveLength(2);
+    const replies = await db.select().from(chatMessages).where(eq(chatMessages.replyToId, payload.messageId));
+    expect(replies).toHaveLength(1);
+    expect(replies[0]!.content).toContain(items[0]!.id);
+    expect(replies[0]!.content).toContain("couldn't finish my reply");
+    expect(replies[0]!.toolCalls).toEqual([expect.objectContaining({ id: 'c1', itemId: items[0]!.id })]);
+    expect(recordUsage).toHaveBeenCalledExactlyOnceWith(usage);
   });
 
   it('regenerates only items of the same brand', async () => {

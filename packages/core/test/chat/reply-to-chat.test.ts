@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { FakeProvider, type TextRequest, type TextResult, type ToolCall } from '@openlumo/providers';
+import { FakeProvider, ProviderError, type TextRequest, type TextResult, type ToolCall, type Usage } from '@openlumo/providers';
 import { createPartialBrandDna } from '../../src/brand-dna/brand-dna-schema';
 import { chatTools, createChatToolExecutor } from '../../src/chat/chat-tools';
 import { replyToChat, type ChatContext } from '../../src/chat/reply-to-chat';
@@ -64,8 +64,12 @@ describe('replyToChat', () => {
     const [first, second] = brain.requests as TextRequest[];
     expect(first!.tools).toEqual(chatTools);
     expect(first!.messages[0]!.role).toBe('system');
-    expect(first!.messages[0]!.content).toContain(itemId);
-    expect(first!.messages[0]!.content).toContain('Craft');
+    const system = first!.messages[0]!.content;
+    for (const label of ['brand_dna', 'strategy', 'recent_items']) {
+      expect(system).toContain(`<untrusted_content label="${label}">`);
+    }
+    expect(system).toMatch(/<untrusted_content label="strategy">\n[^<]*Craft/);
+    expect(system).toMatch(new RegExp(`<untrusted_content label="recent_items">\\n[^<]*${itemId}`));
     expect(first!.messages.slice(1)).toEqual(context.history);
     expect(second!.messages.slice(-2)).toEqual([
       { role: 'assistant', content: '', toolCalls: [draftCall('call-1')] },
@@ -88,8 +92,39 @@ describe('replyToChat', () => {
     expect(executeTool).toHaveBeenCalledTimes(3);
     expect(executeTool).not.toHaveBeenCalledWith(draftCall('call-4'));
     expect(brain.requests).toHaveLength(4);
-    expect(result.reply).toBe('I stopped after three actions.');
+    expect(result.reply).toBe('I stopped after three rounds of actions.');
     expect(result.usage.inputTokens).toBe(40);
+  });
+
+  it('executes at most three tool calls per round and answers the rest as skipped', async () => {
+    const calls = [1, 2, 3, 4].map((index) => draftCall(`call-${index}`));
+    const brain = new FakeProvider({
+      respond: (request) => (toolMessages(request).length > 0 ? 'Done' : toolResult(calls)),
+    });
+    const executeTool = vi.fn(async (call: ToolCall) => `ran ${call.id}`);
+
+    await replyToChat(brain, 'fake/text', context, executeTool);
+
+    expect(executeTool.mock.calls.map(([call]) => call.id)).toEqual(['call-1', 'call-2', 'call-3']);
+    expect(toolMessages((brain.requests as TextRequest[])[1]!)).toEqual([
+      { role: 'tool', toolCallId: 'call-1', content: 'ran call-1' },
+      { role: 'tool', toolCallId: 'call-2', content: 'ran call-2' },
+      { role: 'tool', toolCallId: 'call-3', content: 'ran call-3' },
+      { role: 'tool', toolCallId: 'call-4', content: 'Skipped: too many actions in one step.' },
+    ]);
+  });
+
+  it('reports the running usage total before a later round fails', async () => {
+    const brain = new FakeProvider({
+      textResponses: [toolResult([draftCall('call-1')]), new ProviderError('rate_limited', 'slow down')],
+    });
+    const totals: Usage[] = [];
+
+    await expect(
+      replyToChat(brain, 'fake/text', context, async () => 'ok', (total) => totals.push(total)),
+    ).rejects.toMatchObject({ code: 'rate_limited' });
+
+    expect(totals).toEqual([usage]);
   });
 
   it('returns invalid tool arguments to the model as an error string', async () => {
