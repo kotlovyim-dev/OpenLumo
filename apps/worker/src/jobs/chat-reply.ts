@@ -1,8 +1,10 @@
 import {
+  buildRepurposeInstruction,
   ChatMessageNotFoundError,
   createChatToolExecutor,
   createOnDemandItems,
   defineJob,
+  describeItemForCritique,
   findUserChatMessage,
   getItemWithCurrentVersion,
   hasChatReply,
@@ -14,11 +16,17 @@ import {
   resolveModels,
   type ChatMessage,
   type ExecutedToolCall,
+  type FormatCopy,
 } from '@openlumo/core';
 import type { WorkerDependencies } from '../worker-dependencies';
 
 function createToolExecutor({ db, boss }: WorkerDependencies, message: ChatMessage) {
   const { brandId, userId } = message;
+  const notFound = (itemId: string) => ({ result: `Item ${itemId} was not found.` });
+  const findOwnItem = async (itemId: string) => {
+    const found = await getItemWithCurrentVersion(db, itemId);
+    return found?.item.brandId === brandId ? found : null;
+  };
   return createChatToolExecutor({
     async create_draft({ channel, format, angle }) {
       const [itemId] = await createOnDemandItems(db, boss, { brandId, channel, format, instruction: angle, variants: 1 });
@@ -28,8 +36,7 @@ function createToolExecutor({ db, boss }: WorkerDependencies, message: ChatMessa
       };
     },
     async regenerate_item({ itemId, scope, feedback }) {
-      const found = await getItemWithCurrentVersion(db, itemId);
-      if (found?.item.brandId !== brandId) return { result: `Item ${itemId} was not found.` };
+      if (!(await findOwnItem(itemId))) return notFound(itemId);
       try {
         await requestRegeneration(db, boss, { itemId, scope, feedback, userId });
       } catch (error) {
@@ -37,6 +44,24 @@ function createToolExecutor({ db, boss }: WorkerDependencies, message: ChatMessa
         throw error;
       }
       return { result: `Regenerating the ${scope === 'all' ? 'copy and image' : scope} of item ${itemId}.`, itemId };
+    },
+    async critique_item({ itemId }) {
+      const found = await findOwnItem(itemId);
+      if (!found) return notFound(itemId);
+      if (!found.version) return { result: `Item ${itemId} has no copy yet.` };
+      return { result: describeItemForCritique(found.item, found.version.copy) };
+    },
+    async repurpose_item({ itemId: sourceId, channel, format, angle }) {
+      const found = await findOwnItem(sourceId);
+      if (!found) return notFound(sourceId);
+      if (!found.version) return { result: `Item ${sourceId} has no copy to repurpose yet.` };
+      const source = { channel: found.item.channel, format: found.item.format, copy: found.version.copy as FormatCopy };
+      const instruction = buildRepurposeInstruction(source, { channel, format, angle });
+      const [itemId] = await createOnDemandItems(db, boss, { brandId, channel, format, instruction, variants: 1 });
+      return {
+        result: `Created ${format} draft ${itemId} for ${channel} from item ${sourceId}. It is being written now and lands on the board in review.`,
+        itemId,
+      };
     },
   });
 }
@@ -74,8 +99,9 @@ export function createChatReplyJob(deps: WorkerDependencies) {
         },
       ));
     } catch (error) {
-      if (executed.length === 0) throw error;
-      reply = partialReply(executed);
+      const actions = executed.filter((call) => call.itemId);
+      if (actions.length === 0) throw error;
+      reply = partialReply(actions);
     } finally {
       await context.recordUsage(spent);
     }

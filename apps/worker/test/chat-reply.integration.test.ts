@@ -4,6 +4,7 @@ import path from 'node:path';
 import { eq } from 'drizzle-orm';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
+  appendVersion,
   type Config,
   type JobContext,
   type Queue,
@@ -192,6 +193,99 @@ describe('chat.reply', () => {
     expect(runs.map((run) => run.itemId)).toEqual([own!.id]);
     const [reply] = await db.select().from(chatMessages).where(eq(chatMessages.replyToId, payload.messageId));
     expect(reply!.content).toContain(`Item ${foreign!.id} was not found.`);
+  });
+
+  const sourceCopy = {
+    caption: 'Our sourdough rests for 36 hours before it meets the oven.',
+    hashtags: ['#sourdough'],
+    imageBrief: { prompt: 'A loaf on a board' },
+  };
+
+  async function itemWithCopy(brandId: string) {
+    const [item] = await db
+      .insert(contentItems)
+      .values({ brandId, channel: 'instagram', format: 'social_post', status: 'in_review' })
+      .returning();
+    await appendVersion(db, item!.id, 1, { copy: sourceCopy, author: 'ai' });
+    return item!;
+  }
+
+  function callOnce(name: string, args: Record<string, unknown>) {
+    return scriptBrain((request) => {
+      const tools = request.messages.filter((message) => message.role === 'tool');
+      if (tools.length > 0) return tools.map((message) => message.content).join(' | ');
+      return { text: '', toolCalls: [{ id: 't1', name, arguments: args }], usage };
+    });
+  }
+
+  it('critique_item returns the current copy and checklist and changes nothing', async () => {
+    const payload = await brandWithMessage('What do you think of the sourdough post?');
+    const item = await itemWithCopy(payload.brandId);
+    const runsBefore = await db.select().from(jobRuns);
+    const requests = callOnce('critique_item', { itemId: item.id });
+
+    await job().run(payload, context);
+
+    const tool = requests[1]!.messages.find((message) => message.role === 'tool')!;
+    expect(tool.content).toContain(`Item ${item.id} is a social_post for instagram with status in_review.`);
+    expect(tool.content).toContain('<untrusted_content label="item_copy">');
+    expect(tool.content).toContain('rests for 36 hours');
+    expect(tool.content).toContain('Rules for instagram');
+    expect(await db.select().from(contentItems).where(eq(contentItems.brandId, payload.brandId))).toHaveLength(1);
+    expect(await db.select().from(jobRuns)).toHaveLength(runsBefore.length);
+    const [reply] = await db.select().from(chatMessages).where(eq(chatMessages.replyToId, payload.messageId));
+    expect(reply!.toolCalls).toEqual([expect.not.objectContaining({ itemId: expect.anything() })]);
+  });
+
+  it('repurpose_item creates one draft in the brand whose generate run carries the source text', async () => {
+    const payload = await brandWithMessage('Turn the sourdough post into a LinkedIn carousel.');
+    const source = await itemWithCopy(payload.brandId);
+    callOnce('repurpose_item', { itemId: source.id, channel: 'linkedin', format: 'carousel', angle: 'The 36-hour rest' });
+
+    await job().run(payload, context);
+
+    const items = await db.select().from(contentItems).where(eq(contentItems.brandId, payload.brandId));
+    const created = items.find((item) => item.id !== source.id)!;
+    expect(items).toHaveLength(2);
+    expect(created).toMatchObject({ channel: 'linkedin', format: 'carousel', status: 'in_review', scheduledAt: null });
+    const [run] = await db.select().from(jobRuns).where(eq(jobRuns.itemId, created.id));
+    expect(run).toMatchObject({ type: 'item.generate', idempotencyKey: `generate:${created.id}:1` });
+    const generateJob = await boss.getJobById<{ instruction: string }>('item.generate', run!.id);
+    expect(generateJob?.data.instruction).toContain('native carousel for linkedin');
+    expect(generateJob?.data.instruction).toContain('Angle: The 36-hour rest');
+    expect(generateJob?.data.instruction).toContain('Our sourdough rests for 36 hours before it meets the oven.');
+    const [reply] = await db.select().from(chatMessages).where(eq(chatMessages.replyToId, payload.messageId));
+    expect(reply!.toolCalls).toEqual([expect.objectContaining({ name: 'repurpose_item', itemId: created.id })]);
+  });
+
+  it.each([
+    ['critique_item', {}],
+    ['repurpose_item', { channel: 'x', format: 'social_post' }],
+  ])('%s refuses an item of another brand', async (name, extra) => {
+    const payload = await brandWithMessage('Use the other post.');
+    const other = await brandWithMessage('Other brand');
+    const foreign = await itemWithCopy(other.brandId);
+    const runsBefore = await db.select().from(jobRuns);
+    const requests = callOnce(name, { itemId: foreign.id, ...extra });
+
+    await job().run(payload, context);
+
+    const tool = requests[1]!.messages.find((message) => message.role === 'tool')!;
+    expect(tool.content).toBe(`Item ${foreign.id} was not found.`);
+    expect(await db.select().from(contentItems).where(eq(contentItems.brandId, payload.brandId))).toHaveLength(0);
+    expect(await db.select().from(jobRuns)).toHaveLength(runsBefore.length);
+  });
+
+  it('retries instead of replying when only read-only tools ran before a failure', async () => {
+    const payload = await brandWithMessage('Review the sourdough post.');
+    const item = await itemWithCopy(payload.brandId);
+    scriptBrain((request) => {
+      if (request.messages.some((message) => message.role === 'tool')) throw new ProviderError('unavailable', 'down');
+      return { text: '', toolCalls: [{ id: 't1', name: 'critique_item', arguments: { itemId: item.id } }], usage };
+    });
+
+    await expect(job().run(payload, context)).rejects.toMatchObject({ code: 'unavailable' });
+    expect(await db.select().from(chatMessages).where(eq(chatMessages.replyToId, payload.messageId))).toHaveLength(0);
   });
 
   it('fails without retrying when the message belongs to another brand', async () => {

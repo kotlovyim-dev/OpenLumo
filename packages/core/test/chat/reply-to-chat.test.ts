@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FakeProvider, ProviderError, type TextRequest, type TextResult, type ToolCall, type Usage } from '@openlumo/providers';
 import { createPartialBrandDna } from '../../src/brand-dna/brand-dna-schema';
-import { chatTools, createChatToolExecutor } from '../../src/chat/chat-tools';
+import { buildChatSystemPrompt } from '../../src/chat/chat-prompts';
+import { chatTools, createChatToolExecutor, type ChatToolHandlers } from '../../src/chat/chat-tools';
 import { replyToChat, type ChatContext } from '../../src/chat/reply-to-chat';
+import { writingRules } from '../../src/prompts/writing-rules';
 
 const itemId = '6f1c2b8e-7f53-4d7a-9a3e-2f1d0c9b8a71';
 
@@ -23,13 +25,17 @@ function draftCall(id: string, args: unknown = { channel: 'instagram', format: '
   return { id, name: 'create_draft', arguments: args };
 }
 
+function handlers(overrides: Partial<ChatToolHandlers>): ChatToolHandlers {
+  return { create_draft: vi.fn(), regenerate_item: vi.fn(), critique_item: vi.fn(), repurpose_item: vi.fn(), ...overrides };
+}
+
 function toolMessages(request: TextRequest) {
   return request.messages.filter((message) => message.role === 'tool');
 }
 
 describe('chatTools', () => {
-  it('describes create_draft and regenerate_item with JSON Schemas', () => {
-    expect(chatTools.map((tool) => tool.name)).toEqual(['create_draft', 'regenerate_item']);
+  it('describes the four tools with JSON Schemas', () => {
+    expect(chatTools.map((tool) => tool.name)).toEqual(['create_draft', 'regenerate_item', 'critique_item', 'repurpose_item']);
     expect(chatTools[0]!.parameters).toMatchObject({
       type: 'object',
       required: ['channel', 'format', 'angle'],
@@ -39,6 +45,28 @@ describe('chatTools', () => {
       required: ['itemId', 'scope', 'feedback'],
       properties: { scope: { enum: ['copy', 'image', 'all'] } },
     });
+    expect(chatTools[2]!.parameters).toMatchObject({ type: 'object', required: ['itemId'] });
+    expect(chatTools[3]!.parameters).toMatchObject({
+      type: 'object',
+      required: ['itemId', 'channel', 'format'],
+      properties: { angle: { type: 'string' } },
+    });
+  });
+});
+
+describe('buildChatSystemPrompt', () => {
+  const system = buildChatSystemPrompt(context);
+
+  it('asks for specific, grounded advice under the writing rules', () => {
+    expect(system).toContain('opinionated');
+    expect(system).toContain('Never invent facts');
+    expect(system).toContain(writingRules);
+    expect(system).toContain('plain text');
+  });
+
+  it('explains when to critique and when to repurpose an item', () => {
+    expect(system).toContain('call critique_item');
+    expect(system).toContain('call repurpose_item');
   });
 });
 
@@ -129,7 +157,7 @@ describe('replyToChat', () => {
 
   it('returns invalid tool arguments to the model as an error string', async () => {
     const createDraft = vi.fn(async () => ({ result: 'created' }));
-    const execute = createChatToolExecutor({ create_draft: createDraft, regenerate_item: vi.fn() });
+    const execute = createChatToolExecutor(handlers({ create_draft: createDraft }));
     const brain = new FakeProvider({
       respond: (request) => {
         const [tool] = toolMessages(request);
@@ -150,7 +178,7 @@ describe('replyToChat', () => {
 describe('createChatToolExecutor', () => {
   it('passes parsed arguments to the matching handler', async () => {
     const regenerate = vi.fn(async () => ({ result: 'regenerating', itemId }));
-    const execute = createChatToolExecutor({ create_draft: vi.fn(), regenerate_item: regenerate });
+    const execute = createChatToolExecutor(handlers({ regenerate_item: regenerate }));
 
     const outcome = await execute({
       id: 'c',
@@ -162,8 +190,36 @@ describe('createChatToolExecutor', () => {
     expect(outcome).toEqual({ result: 'regenerating', itemId });
   });
 
+  it('validates critique_item and repurpose_item arguments before calling their handlers', async () => {
+    const critique = vi.fn(async () => ({ result: 'copy and checklist' }));
+    const repurpose = vi.fn(async () => ({ result: 'repurposing', itemId }));
+    const execute = createChatToolExecutor(handlers({ critique_item: critique, repurpose_item: repurpose }));
+
+    expect((await execute({ id: 'c', name: 'critique_item', arguments: { itemId: 'abc' } })).result).toMatch(
+      /^Invalid arguments for critique_item: itemId/,
+    );
+    expect(
+      (await execute({ id: 'c', name: 'repurpose_item', arguments: { itemId, channel: 'x', format: 'carousel' } })).result,
+    ).toMatch(/^Invalid arguments for repurpose_item: format: This channel does not support that format/);
+    expect(
+      (await execute({ id: 'c', name: 'repurpose_item', arguments: { itemId, channel: 'x', format: 'social_post', angle: ' ' } }))
+        .result,
+    ).toMatch(/^Invalid arguments for repurpose_item: angle/);
+    expect(critique).not.toHaveBeenCalled();
+    expect(repurpose).not.toHaveBeenCalled();
+
+    expect(await execute({ id: 'c', name: 'critique_item', arguments: { itemId } })).toEqual({ result: 'copy and checklist' });
+    expect(critique).toHaveBeenCalledWith({ itemId });
+    await execute({ id: 'c', name: 'repurpose_item', arguments: { itemId, channel: 'linkedin', format: 'carousel', angle: ' Steps ' } });
+    await execute({ id: 'c', name: 'repurpose_item', arguments: { itemId, channel: 'email', format: 'email' } });
+    expect(repurpose.mock.calls).toEqual([
+      [{ itemId, channel: 'linkedin', format: 'carousel', angle: 'Steps' }],
+      [{ itemId, channel: 'email', format: 'email' }],
+    ]);
+  });
+
   it('answers unknown tools and malformed arguments without throwing', async () => {
-    const execute = createChatToolExecutor({ create_draft: vi.fn(), regenerate_item: vi.fn() });
+    const execute = createChatToolExecutor(handlers({}));
     expect(await execute({ id: 'c', name: 'delete_brand', arguments: {} })).toEqual({
       result: 'Unknown tool delete_brand.',
     });

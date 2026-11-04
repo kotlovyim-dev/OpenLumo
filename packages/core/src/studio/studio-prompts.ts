@@ -1,6 +1,7 @@
 import type { Message } from '@openlumo/providers';
 import type { BrandDna } from '../brand-dna/brand-dna-schema';
 import type { Channel, ItemFormat } from '../planner/channel-formats';
+import { untrustedContentRule } from '../prompts/untrusted-content';
 import { writingRules } from '../prompts/writing-rules';
 import { aspectRatioFor } from './aspect-ratio';
 import { channelGuidance } from './channel-guidance';
@@ -31,6 +32,7 @@ export function buildCopyMessages(input: CopyInput): Message[] {
   const system = [
     'You are a brand copywriter. Write marketing copy as a structured object that matches the requested format.',
     `Write in the language with BCP 47 code "${input.language}". Follow the brand voice.`,
+    untrustedContentRule,
     `Writing rules:\n${writingRules}`,
     copyRules(item.channel, item.format),
   ].join('\n\n');

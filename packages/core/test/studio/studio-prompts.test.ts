@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createPartialBrandDna } from '../../src/brand-dna/brand-dna-schema';
 import { channelFormats, type Channel, type ItemFormat } from '../../src/planner/channel-formats';
+import { untrustedContentRule } from '../../src/prompts/untrusted-content';
 import { channelGuidance } from '../../src/studio/channel-guidance';
 import { buildCopyMessages } from '../../src/studio/studio-prompts';
 
@@ -22,6 +23,7 @@ describe('buildCopyMessages', () => {
       for (const format of formats) {
         const system = systemFor(channel, format);
         expect(system).toContain('Write in the language with BCP 47 code "de". Follow the brand voice.');
+        expect(system).toContain(untrustedContentRule);
         expect(system).toContain('Never invent numbers');
         expect(system).toContain('delve');
         expect(system).toContain('"comment YES"');

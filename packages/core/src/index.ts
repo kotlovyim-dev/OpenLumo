@@ -46,3 +46,5 @@ export * from './brands/require-brand-access';
 export * from './chat/chat-tools';
 export * from './chat/reply-to-chat';
 export * from './chat/chat-repository';
+export * from './chat/critique-item';
+export * from './chat/repurpose-item';
