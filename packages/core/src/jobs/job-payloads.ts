@@ -12,6 +12,7 @@ const itemPayload = brandPayload.extend({
 
 export const jobPayloads = {
   'brand.crawl': brandPayload,
+  'brand.research': brandPayload.extend({ refresh: z.boolean().optional() }),
   'brand.synthesize-dna': brandPayload.extend({ mergeFeedback: z.boolean().optional() }),
   'strategy.create': brandPayload.extend({ goal: goalSchema, channels: z.array(channelSchema).min(1) }),
   'plan.month': brandPayload.extend({

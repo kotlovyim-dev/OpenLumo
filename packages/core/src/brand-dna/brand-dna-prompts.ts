@@ -6,6 +6,7 @@ import { untrustedContentRule, wrapUntrustedContent } from '../prompts/untrusted
 const PAGE_TEXT_LIMIT = 3000;
 const PAGE_META_LIMIT = 300;
 const TOTAL_PAGES_LIMIT = 20000;
+const RESEARCH_BRIEF_LIMIT = 12000;
 
 const systemPrompt = [
   'You are a brand strategist. Read the pages of a business website and describe its brand as a structured Brand DNA object.',
@@ -18,7 +19,7 @@ const systemPrompt = [
   untrustedContentRule,
 ].join('\n');
 
-export function buildBrandDnaMessages(crawl: CrawlResult, feedback: string[]): Message[] {
+export function buildBrandDnaMessages(crawl: CrawlResult, feedback: string[], researchBrief = ''): Message[] {
   const sections: string[] = [];
   let used = 0;
   for (const page of crawl.pages) {
@@ -35,6 +36,7 @@ export function buildBrandDnaMessages(crawl: CrawlResult, feedback: string[]): M
     used += section.length;
   }
   if (crawl.palette.length > 0) sections.push(`Colours found in the site CSS: ${crawl.palette.join(', ')}`);
+  if (researchBrief) sections.push(wrapUntrustedContent('web research', researchBrief.slice(0, RESEARCH_BRIEF_LIMIT)));
   if (feedback.length > 0) {
     sections.push(`Feedback from the brand owner to respect:\n${feedback.map((note) => `- ${note}`).join('\n')}`);
   }

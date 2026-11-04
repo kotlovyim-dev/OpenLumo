@@ -8,10 +8,11 @@ export async function synthesizeBrandDna(
   modelId: string,
   crawl: CrawlResult,
   feedback: string[],
+  researchBrief = '',
 ): Promise<{ dna: BrandDna; usage: Usage }> {
   const { value, usage } = await generateObject(brain, {
     model: modelId,
-    messages: buildBrandDnaMessages(crawl, feedback),
+    messages: buildBrandDnaMessages(crawl, feedback, researchBrief),
     schema: brandDnaSchema,
     schemaName: 'brand_dna',
   });

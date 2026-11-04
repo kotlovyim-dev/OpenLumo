@@ -15,6 +15,7 @@ import {
   createPartialBrandDna,
   saveBrandDna,
   getBrandDna,
+  getResearch,
   listOpenFeedbackNotes,
   setBrandStatus,
   loadConfig,
@@ -24,6 +25,7 @@ import { createTestDatabase } from '@openlumo/db/testing';
 import { ProviderError } from '@openlumo/providers';
 import { fakeResponses } from '../../../packages/core/src/models/fake-responses';
 import { createBrandCrawlJob } from '../src/jobs/brand-crawl';
+import { createBrandResearchJob } from '../src/jobs/brand-research';
 import { createBrandSynthesizeDnaJob } from '../src/jobs/brand-synthesize-dna';
 
 const siteDir = fileURLToPath(
@@ -125,7 +127,7 @@ describe('brand jobs', () => {
     expect(brand.status).toBe('crawling');
 
     await createBrandCrawlJob(deps()).run({ brandId: brand.id }, context);
-    expect(enqueued).toEqual([{ name: 'brand.synthesize-dna', payload: { brandId: brand.id } }]);
+    expect(enqueued).toEqual([{ name: 'brand.research', payload: { brandId: brand.id } }]);
 
     const sources = await db.select().from(brandSources).where(eq(brandSources.brandId, brand.id));
     expect(sources.filter((source) => source.kind === 'page').length).toBeGreaterThan(1);
@@ -162,7 +164,7 @@ describe('brand jobs', () => {
 
     expect(second).toHaveLength(first.length);
     expect(await db.select().from(assets).where(eq(assets.brandId, brand.id))).toHaveLength(1);
-    expect(keys).toEqual(['synthesize-dna:same-run', 'synthesize-dna:same-run']);
+    expect(keys).toEqual(['research:same-run', 'research:same-run']);
   });
 
   it('saves a prefilled partial DNA and needs_input for a thin site', async () => {
@@ -221,6 +223,118 @@ describe('brand jobs', () => {
     expect(brand.status).toBe('needs_input');
     const members = await db.select().from(brandMembers).where(eq(brandMembers.brandId, brand.id));
     expect(members).toEqual([{ brandId: brand.id, userId: 'u1', role: 'owner' }]);
+  });
+
+  describe('web research', () => {
+    async function crawledBrand() {
+      const brand = await createBrand(db, { url: `${fixtureOrigin}/`, createdBy: 'u1' });
+      await createBrandCrawlJob(deps()).run({ brandId: brand.id }, context);
+      enqueued.length = 0;
+      return brand;
+    }
+
+    async function researchedBrand() {
+      const brand = await createBrand(db, { url: `${fixtureOrigin}/`, createdBy: 'u1' });
+      await saveBrandDna(db, brand.id, {
+        ...createPartialBrandDna({ name: 'Sunrise Bakery', palette: [] }),
+        voice: { tone: { formalToCasual: 2, seriousToPlayful: 2, reservedToBold: 2 }, dos: ['Keep it short'], donts: [], samplePhrases: [] },
+      });
+      await setBrandStatus(db, brand.id, 'ready');
+      enqueued.length = 0;
+      return brand;
+    }
+
+    async function withFailingResearch(run: () => Promise<void>) {
+      const original = fakeResponses.brand_research!;
+      fakeResponses.brand_research = () => {
+        throw new ProviderError('invalid_output', 'Web plugin not supported');
+      };
+      try {
+        await run();
+      } finally {
+        fakeResponses.brand_research = original;
+      }
+    }
+
+    it('stores cited research and queues synthesis', async () => {
+      const brand = await crawledBrand();
+      const steps: string[] = [];
+
+      await createBrandResearchJob(deps()).run(
+        { brandId: brand.id },
+        { ...context, reportProgress: async (step) => void steps.push(step) },
+      );
+
+      expect(steps).toEqual(['Researching your market']);
+      expect(enqueued).toEqual([{ name: 'brand.synthesize-dna', payload: { brandId: brand.id } }]);
+      const research = await getResearch(db, brand.id);
+      expect(research?.status).toBe('succeeded');
+      expect(research?.sources).toEqual([{ url: 'https://example.com/sunrise-bakery-review', title: 'Sunrise Bakery review' }]);
+    });
+
+    it('applies the findings to the synthesised DNA and names the brand', async () => {
+      const brand = await crawledBrand();
+      expect(brand.name).not.toBe('Sunrise Bakery');
+      await createBrandResearchJob(deps()).run({ brandId: brand.id }, context);
+
+      await createBrandSynthesizeDnaJob(deps()).run({ brandId: brand.id }, context);
+
+      const saved = await getBrandDna(db, brand.id);
+      expect(saved?.dna.competitors.map((competitor) => competitor.name)).toEqual(['Golden Crust Bakery']);
+      expect(saved?.dna.identity.features).toContain('Pre-order online by 8pm');
+      expect(saved?.dna.audience.channels).toContain('Local food blogs');
+      const [renamed] = await db.select().from(brands).where(eq(brands.id, brand.id));
+      expect(renamed?.name).toBe('Sunrise Bakery');
+    });
+
+    it('records failed research and still queues synthesis', async () => {
+      const brand = await crawledBrand();
+
+      await withFailingResearch(() => createBrandResearchJob(deps()).run({ brandId: brand.id }, context));
+
+      expect((await getResearch(db, brand.id))?.status).toBe('failed');
+      expect(enqueued).toEqual([{ name: 'brand.synthesize-dna', payload: { brandId: brand.id } }]);
+      await createBrandSynthesizeDnaJob(deps()).run({ brandId: brand.id }, context);
+      expect(await brandStatus(brand.id)).toBe('ready');
+      expect((await getBrandDna(db, brand.id))?.dna.competitors).toEqual([]);
+    });
+
+    it('refreshes competitors, features and audience and keeps the voice', async () => {
+      const brand = await researchedBrand();
+
+      await createBrandResearchJob(deps()).run({ brandId: brand.id, refresh: true }, context);
+
+      const saved = await getBrandDna(db, brand.id);
+      expect(saved?.dna.competitors[0]?.name).toBe('Golden Crust Bakery');
+      expect(saved?.dna.identity.features).toContain('Pre-order online by 8pm');
+      expect(saved?.dna.voice.dos).toEqual(['Keep it short']);
+      expect(enqueued).toEqual([]);
+    });
+
+    it('keeps an edit saved while the refresh was researching', async () => {
+      const brand = await researchedBrand();
+      const editDuringResearch = async () => {
+        const current = await getBrandDna(db, brand.id);
+        await saveBrandDna(db, brand.id, { ...current!.dna, identity: { ...current!.dna.identity, tagline: 'Edited meanwhile' } });
+      };
+
+      await createBrandResearchJob(deps()).run({ brandId: brand.id, refresh: true }, { ...context, recordUsage: editDuringResearch });
+
+      const saved = await getBrandDna(db, brand.id);
+      expect(saved?.dna.identity.tagline).toBe('Edited meanwhile');
+      expect(saved?.dna.competitors[0]?.name).toBe('Golden Crust Bakery');
+    });
+
+    it('leaves the DNA untouched when a refresh fails', async () => {
+      const brand = await researchedBrand();
+      const before = await getBrandDna(db, brand.id);
+
+      await withFailingResearch(() => createBrandResearchJob(deps()).run({ brandId: brand.id, refresh: true }, context));
+
+      expect((await getBrandDna(db, brand.id))?.version).toBe(before!.version);
+      expect((await getResearch(db, brand.id))?.status).toBe('failed');
+      expect(await brandStatus(brand.id)).toBe('ready');
+    });
   });
 
   describe('feedback merge', () => {

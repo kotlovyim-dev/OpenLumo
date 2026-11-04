@@ -1,5 +1,6 @@
 export const jobNames = [
   'brand.crawl',
+  'brand.research',
   'brand.synthesize-dna',
   'strategy.create',
   'plan.month',

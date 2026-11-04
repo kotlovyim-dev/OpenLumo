@@ -1,8 +1,10 @@
 import {
   BrandNotReadyError,
   type JobContext,
+  applyResearch,
   defineJob,
   getBrandDna,
+  getResearch,
   listOpenFeedbackNotes,
   loadCrawlSources,
   markFeedbackMerged,
@@ -11,6 +13,7 @@ import {
   resolveModels,
   saveBrandDna,
   saveBrandDnaIfVersion,
+  setBrandName,
   setBrandStatus,
   synthesizeBrandDna,
 } from '@openlumo/core';
@@ -57,11 +60,18 @@ export function createBrandSynthesizeDnaJob(deps: WorkerDependencies) {
 
       const crawl = (await loadCrawlSources(db, brandId)) ?? { pages: [], palette: [], logoAssetId: undefined };
 
+      const research = await getResearch(db, brandId);
+
       const { brain } = await resolveModels(db, config);
-      const { dna, usage } = await synthesizeBrandDna(brain.model, brain.modelId, crawl, []);
+      const { dna: synthesized, usage } = await synthesizeBrandDna(brain.model, brain.modelId, crawl, [], research?.brief);
       await context.recordUsage(usage);
 
-      await saveBrandDna(db, brandId, crawl.logoAssetId ? { ...dna, visuals: { ...dna.visuals, logoAssetId: crawl.logoAssetId } } : dna);
+      const researched = research?.findings ? applyResearch(synthesized, research.findings) : synthesized;
+      const dna = crawl.logoAssetId
+        ? { ...researched, visuals: { ...researched.visuals, logoAssetId: crawl.logoAssetId } }
+        : researched;
+      await saveBrandDna(db, brandId, dna);
+      if (dna.identity.name.trim()) await setBrandName(db, brandId, dna.identity.name.trim());
       await setBrandStatus(db, brandId, 'ready');
     },
     {

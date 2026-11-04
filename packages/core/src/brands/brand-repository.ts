@@ -12,6 +12,10 @@ export async function setBrandStatus(db: Database, brandId: string, status: Bran
   await db.update(brands).set({ status }).where(eq(brands.id, brandId));
 }
 
+export async function setBrandName(db: Database, brandId: string, name: string): Promise<void> {
+  await db.update(brands).set({ name }).where(eq(brands.id, brandId));
+}
+
 export async function addBrandMember(
   db: Database,
   brandId: string,

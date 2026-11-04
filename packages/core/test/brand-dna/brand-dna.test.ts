@@ -88,6 +88,13 @@ describe('synthesizeBrandDna', () => {
     expect(user).toContain('less corporate');
   });
 
+  it('includes the web research brief as untrusted content', async () => {
+    const brain = new FakeProvider({ textResponses: [JSON.stringify(validDna)] });
+    await synthesizeBrandDna(brain, 'fake/text', crawlWith('text', []), [], 'Rivals include Dawn Loaves.');
+    const user = (brain.requests[0] as TextRequest).messages.find((message) => message.role === 'user')!.content;
+    expect(user).toMatch(/<untrusted_content label="web research">\nRivals include Dawn Loaves\./);
+  });
+
   it('asks to keep quotable facts verbatim and never invent them', async () => {
     const brain = new FakeProvider({ textResponses: [JSON.stringify(validDna)] });
     await synthesizeBrandDna(brain, 'fake/text', crawlWith('text', []), []);

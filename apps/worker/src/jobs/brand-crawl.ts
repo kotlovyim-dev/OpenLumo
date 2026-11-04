@@ -33,11 +33,7 @@ export function createBrandCrawlJob(deps: WorkerDependencies) {
         return;
       }
 
-      await context.enqueue(
-        'brand.synthesize-dna',
-        { brandId },
-        { idempotencyKey: `synthesize-dna:${context.runId}` },
-      );
+      await context.enqueue('brand.research', { brandId }, { idempotencyKey: `research:${context.runId}` });
     },
     { onFailed: ({ brandId }) => fallBackToManualInput(db, brandId) },
   );
