@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -22,7 +24,14 @@ export type Config = {
   publicUrl: string;
 };
 
-export function loadConfig(env: NodeJS.ProcessEnv): Config {
+function findWorkspaceRoot(start: string): string {
+  for (let directory = start; ; directory = dirname(directory)) {
+    if (existsSync(join(directory, 'pnpm-workspace.yaml'))) return directory;
+    if (dirname(directory) === directory) return start;
+  }
+}
+
+export function loadConfig(env: NodeJS.ProcessEnv, cwd = process.cwd()): Config {
   const parsed = schema.safeParse(env);
   if (!parsed.success) {
     const problems = parsed.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`);
@@ -32,7 +41,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
   return {
     databaseUrl: values.DATABASE_URL,
     appSecret: values.APP_SECRET,
-    storageDirectory: values.STORAGE_DIRECTORY,
+    storageDirectory: resolve(findWorkspaceRoot(cwd), values.STORAGE_DIRECTORY),
     allowPrivateHosts: values.CRAWLER_ALLOW_PRIVATE_HOSTS === 'true',
     testProviders: values.OPENLUMO_TEST_PROVIDERS,
     globalJobConcurrency: values.GLOBAL_JOB_CONCURRENCY,

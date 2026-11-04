@@ -1,5 +1,9 @@
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../src/config';
+
+const workspaceRoot = resolve(fileURLToPath(new URL('../../..', import.meta.url)));
 
 const valid = {
   DATABASE_URL: 'postgres://u:p@localhost:5432/db',
@@ -16,13 +20,25 @@ describe('loadConfig', () => {
     expect(loadConfig(valid)).toEqual({
       databaseUrl: valid.DATABASE_URL,
       appSecret: valid.APP_SECRET,
-      storageDirectory: './data/assets',
+      storageDirectory: join(workspaceRoot, 'data', 'assets'),
       allowPrivateHosts: false,
       testProviders: undefined,
       globalJobConcurrency: 4,
       brandJobConcurrency: 2,
       publicUrl: valid.PUBLIC_URL,
     });
+  });
+
+  it('gives the web app and the worker the same storage directory', () => {
+    const fromWeb = loadConfig(valid, join(workspaceRoot, 'apps', 'web')).storageDirectory;
+    const fromWorker = loadConfig(valid, join(workspaceRoot, 'apps', 'worker')).storageDirectory;
+    expect(fromWeb).toBe(join(workspaceRoot, 'data', 'assets'));
+    expect(fromWorker).toBe(fromWeb);
+  });
+
+  it('keeps an absolute storage directory as it is', () => {
+    const absolute = resolve('/srv/openlumo/assets');
+    expect(loadConfig({ ...valid, STORAGE_DIRECTORY: absolute }).storageDirectory).toBe(absolute);
   });
 
   it('reads overrides', () => {
