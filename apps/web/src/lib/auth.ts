@@ -1,13 +1,25 @@
 import 'server-only';
+import { toNextJsHandler } from 'better-auth/next-js';
 import { createAuth, type Auth } from './create-auth';
 import { getRuntime } from './runtime';
 
-const cache = globalThis as typeof globalThis & { openlumoAuth?: Auth };
+type AuthCache = { auth: Auth; handler: ReturnType<typeof toNextJsHandler> };
 
-export function getAuth(): Auth {
+const cache = globalThis as typeof globalThis & { openlumoAuth?: AuthCache };
+
+function getAuthCache(): AuthCache {
   if (!cache.openlumoAuth) {
     const { config, db } = getRuntime();
-    cache.openlumoAuth = createAuth(db, { secret: config.appSecret, baseURL: config.publicUrl });
+    const auth = createAuth(db, { secret: config.appSecret, baseURL: config.publicUrl });
+    cache.openlumoAuth = { auth, handler: toNextJsHandler(auth) };
   }
   return cache.openlumoAuth;
+}
+
+export function getAuth(): Auth {
+  return getAuthCache().auth;
+}
+
+export function getAuthHandler() {
+  return getAuthCache().handler;
 }

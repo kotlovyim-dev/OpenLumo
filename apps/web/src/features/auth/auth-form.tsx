@@ -31,6 +31,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const text = copy[mode];
+  const fieldProps = { 'aria-invalid': error ? true : undefined, 'aria-describedby': error ? 'auth-error' : undefined };
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,18 +60,18 @@ export function AuthForm({ mode }: { mode: Mode }) {
         {mode === 'sign-up' && (
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="name">Name</Label>
-            <Input id="name" name="name" autoComplete="name" required />
+            <Input id="name" name="name" autoComplete="name" required {...fieldProps} />
           </div>
         )}
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" autoComplete="email" required />
+          <Input id="email" name="email" type="email" autoComplete="email" required {...fieldProps} />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" name="password" type="password" autoComplete={text.password} minLength={8} required />
+          <Input id="password" name="password" type="password" autoComplete={text.password} minLength={8} required {...fieldProps} />
         </div>
-        <p role="alert" className="min-h-5 text-sm text-danger">
+        <p id="auth-error" role="alert" className="min-h-5 text-sm text-danger">
           {error}
         </p>
         <Button type="submit" disabled={pending}>

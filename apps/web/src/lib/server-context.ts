@@ -14,3 +14,8 @@ export async function getServerContext() {
   const user: SessionUser = { id, name, email, role };
   return { db, boss: await getBoss(), config, storage, user };
 }
+
+export async function redirectIfSignedIn() {
+  const session = await getAuth().api.getSession({ headers: await headers() });
+  if (session) redirect('/');
+}

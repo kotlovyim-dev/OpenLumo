@@ -10,6 +10,7 @@
   --lilac: #cbbfff;
   --violet: #9f8cf0;
   --violet-foreground: #26204a;
+  --violet-hover: #cbbfff;
   --pale: #f1edff;
   --ink: #26204a;
   --blush: #ff9bb8;
@@ -33,6 +34,7 @@
     --lilac: #6a55d6;
     --violet: #6a55d6;
     --violet-foreground: #ffffff;
+    --violet-hover: #5340bd;
     --danger: #c42a4d;
     color-scheme: light;
   }
@@ -48,6 +50,7 @@
   --color-lilac: var(--lilac);
   --color-violet: var(--violet);
   --color-violet-foreground: var(--violet-foreground);
+  --color-violet-hover: var(--violet-hover);
   --color-pale: var(--pale);
   --color-ink: var(--ink);
   --color-blush: var(--blush);

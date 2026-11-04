@@ -1,12 +1,13 @@
 import 'server-only';
 import { createAssetStorage, createQueue, loadConfig, type Config, type Queue } from '@openlumo/core';
 import { createDatabase, type Database } from '@openlumo/db';
+import { memoizeUnlessRejected } from './memoize-unless-rejected';
 
 type Runtime = {
   config: Config;
   db: Database;
   storage: ReturnType<typeof createAssetStorage>;
-  boss?: Promise<Queue>;
+  getBoss: () => Promise<Queue>;
 };
 
 const cache = globalThis as typeof globalThis & { openlumoRuntime?: Runtime };
@@ -18,13 +19,12 @@ export function getRuntime(): Runtime {
       config,
       db: createDatabase(config.databaseUrl),
       storage: createAssetStorage(config.storageDirectory),
+      getBoss: memoizeUnlessRejected(() => createQueue(config.databaseUrl, { supervise: false, schedule: false })),
     };
   }
   return cache.openlumoRuntime;
 }
 
 export function getBoss(): Promise<Queue> {
-  const runtime = getRuntime();
-  runtime.boss ??= createQueue(runtime.config.databaseUrl, { supervise: false, schedule: false });
-  return runtime.boss;
+  return getRuntime().getBoss();
 }

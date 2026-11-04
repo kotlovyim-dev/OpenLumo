@@ -29,4 +29,23 @@ describe('role assignment on sign-up', () => {
     expect(first?.role).toBe('admin');
     expect(second?.role).toBe('member');
   });
+
+  it('ignores a client-supplied role', async () => {
+    const auth = createAuth(database.db, {
+      secret: 'test-secret-with-at-least-thirty-two-characters',
+      baseURL: 'http://localhost:3000',
+    });
+
+    await auth.api.signUpEmail({ body: { name: 'Seed', email: 'seed@example.com', password: 'password-123' } });
+    await auth.api.signUpEmail({
+      body: { name: 'Sneaky', email: 'sneaky@example.com', password: 'password-123', role: 'admin' } as {
+        name: string;
+        email: string;
+        password: string;
+      },
+    });
+
+    const [sneaky] = await database.db.select().from(users).where(eq(users.email, 'sneaky@example.com'));
+    expect(sneaky?.role).toBe('member');
+  });
 });
