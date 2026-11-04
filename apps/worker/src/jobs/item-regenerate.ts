@@ -37,7 +37,7 @@ async function regenerateItem(
     );
   }
   if (!version) return;
-  await writeImages(deps, brandId, found.item, version, context);
+  await writeImages(deps, brandId, found.item, version, context, scope === 'image' ? feedback : undefined);
 }
 
 export function createItemRegenerateJob(deps: WorkerDependencies) {

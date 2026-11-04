@@ -11,14 +11,20 @@ export async function addDnaFeedback(db: Database, brandId: string, note: string
   return row!.id;
 }
 
-export async function listOpenFeedback(db: Database, brandId: string): Promise<string[]> {
-  const rows = await db
-    .select({ note: dnaFeedback.note })
+export async function listOpenFeedbackNotes(
+  db: Database,
+  brandId: string,
+): Promise<{ id: string; note: string }[]> {
+  return db
+    .select({ id: dnaFeedback.id, note: dnaFeedback.note })
     .from(dnaFeedback)
     .where(and(eq(dnaFeedback.brandId, brandId), eq(dnaFeedback.merged, false)))
     .orderBy(desc(dnaFeedback.createdAt))
     .limit(OPEN_FEEDBACK_LIMIT);
-  return rows.map((row) => row.note);
+}
+
+export async function listOpenFeedback(db: Database, brandId: string): Promise<string[]> {
+  return (await listOpenFeedbackNotes(db, brandId)).map((row) => row.note);
 }
 
 export async function markFeedbackMerged(db: Database, brandId: string, noteIds: string[]): Promise<void> {

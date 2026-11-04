@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { and, eq } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   type Config,
   type JobContext,
@@ -17,6 +17,7 @@ import {
   requestRegeneration,
   saveBrandDna,
 } from '@openlumo/core';
+import { FakeProvider } from '@openlumo/providers';
 import { contentItems, dnaFeedback, itemVersions, jobRuns, users, type Database } from '@openlumo/db';
 import { createTestDatabase } from '@openlumo/db/testing';
 import { createItemGenerateJob } from '../src/jobs/item-generate';
@@ -131,6 +132,37 @@ describe('item.regenerate', () => {
     expect(after?.version?.assetIds).toHaveLength(1);
     expect(after?.version?.assetIds).not.toEqual(before?.version?.assetIds);
     expect(progress).toEqual(['Rendering image']);
+  });
+
+  it('sends the feedback to the image model for scope image without touching the copy', async () => {
+    const { brand, item } = await generatedItem();
+    const before = await getItemWithCurrentVersion(db, item.id);
+    const spy = vi.spyOn(FakeProvider.prototype, 'generate');
+    try {
+      await createItemRegenerateJob(deps()).run(
+        { brandId: brand.id, itemId: item.id, targetVersion: 2, scope: 'image', feedback: 'darker background' },
+        context,
+      );
+      expect(spy.mock.calls[0]?.[0].prompt).toContain('Change requested: darker background');
+    } finally {
+      spy.mockRestore();
+    }
+    const after = await getItemWithCurrentVersion(db, item.id);
+    expect(after?.version?.copy).toEqual(before?.version?.copy);
+  });
+
+  it('targets the next version with a new key once the previous regeneration was applied', async () => {
+    const { brand, item } = await generatedItem();
+    const first = await requestRegeneration(db, boss, { itemId: item.id, scope: 'copy', userId: 'u1' });
+    await createItemRegenerateJob(deps()).run(
+      { brandId: brand.id, itemId: item.id, targetVersion: 2, scope: 'copy' },
+      context,
+    );
+
+    const second = await requestRegeneration(db, boss, { itemId: item.id, scope: 'copy', userId: 'u1' });
+
+    expect(second.runId).not.toBe(first.runId);
+    expect((await runPayloadOf(second.runId)).idempotencyKey).toBe(`regenerate:${item.id}:3`);
   });
 
   it('refuses a rejected item without enqueuing anything', async () => {

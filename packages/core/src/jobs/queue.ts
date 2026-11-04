@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { PgBoss, type ConstructorOptions } from 'pg-boss';
 import { jobRuns, type Database } from '@openlumo/db';
 import { jobNames, type JobName } from './job-names';
@@ -28,6 +28,12 @@ export async function enqueue<N extends JobName>(
   payload: JobPayload<N>,
   options: { idempotencyKey?: string } = {},
 ): Promise<string> {
+  if (options.idempotencyKey) {
+    await db
+      .update(jobRuns)
+      .set({ idempotencyKey: null })
+      .where(and(eq(jobRuns.idempotencyKey, options.idempotencyKey), eq(jobRuns.status, 'failed')));
+  }
   const runId = randomUUID();
   const itemId = 'itemId' in payload ? payload.itemId : undefined;
   const inserted = await db

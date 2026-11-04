@@ -214,6 +214,22 @@ describe('job runtime', { timeout: 30_000 }, () => {
     expect(rows).toHaveLength(1);
   });
 
+  it('enqueues a fresh run under the same key once the previous run failed', async () => {
+    const first = await enqueue(boss, db, 'brand.crawl', { brandId }, { idempotencyKey: 'retry-1' });
+    await db.update(jobRuns).set({ status: 'failed' }).where(eq(jobRuns.id, first));
+    const send = vi.spyOn(boss, 'send');
+
+    const second = await enqueue(boss, db, 'brand.crawl', { brandId }, { idempotencyKey: 'retry-1' });
+
+    expect(second).not.toBe(first);
+    expect(send).toHaveBeenCalledTimes(1);
+    const [old] = await db.select().from(jobRuns).where(eq(jobRuns.id, first));
+    expect(old?.idempotencyKey).toBeNull();
+    const [fresh] = await db.select().from(jobRuns).where(eq(jobRuns.id, second));
+    expect(fresh?.idempotencyKey).toBe('retry-1');
+    send.mockRestore();
+  });
+
   it('removes the run when sending fails so a retry with the same key sends', async () => {
     const send = vi.spyOn(boss, 'send').mockRejectedValueOnce(new Error('connection lost'));
 

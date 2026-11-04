@@ -68,6 +68,7 @@ export async function writeImages(
   item: ContentItem,
   version: ItemVersion,
   context: JobContext,
+  feedback?: string,
 ): Promise<void> {
   const briefs = imageBriefs(version.copy as FormatCopy);
   if (version.assetIds.length >= briefs.length) return;
@@ -83,7 +84,9 @@ export async function writeImages(
 
   const assetIds = [...version.assetIds];
   for (const brief of briefs.slice(assetIds.length)) {
-    const rendered = await renderImage(image.model, image.modelId, brief.prompt, saved.dna, aspectRatio);
+    const prompt = feedback ? `${brief.prompt}
+Change requested: ${feedback}` : brief.prompt;
+    const rendered = await renderImage(image.model, image.modelId, prompt, saved.dna, aspectRatio);
     await context.recordUsage(rendered.usage);
     const bytes = brief.headlineOverlay
       ? await composeOverlay(rendered.bytes, { headline: brief.headlineOverlay, logo, accentColor })
@@ -102,7 +105,7 @@ export async function writeImages(
       height,
       provider: config.testProviders === 'fake' ? 'fake' : 'openrouter',
       model: image.modelId,
-      prompt: brief.prompt,
+      prompt,
     });
     assetIds.push(assetId);
     await attachAssets(db, version.id, assetIds);

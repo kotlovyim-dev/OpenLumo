@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { FakeProvider } from '@openlumo/providers';
 import { dnaFeedback, users, type Database } from '@openlumo/db';
 import { createTestDatabase } from '@openlumo/db/testing';
-import { addDnaFeedback, listOpenFeedback, markFeedbackMerged, mergeFeedback } from '../../src/brand-dna/dna-feedback';
+import { addDnaFeedback, listOpenFeedback, listOpenFeedbackNotes, markFeedbackMerged, mergeFeedback } from '../../src/brand-dna/dna-feedback';
 import { getBrandDna, saveBrandDna } from '../../src/brand-dna/brand-dna-repository';
 import { createPartialBrandDna } from '../../src/brand-dna/brand-dna-schema';
 import { fakeResponses } from '../../src/models/fake-responses';
@@ -41,6 +41,15 @@ describe('dna feedback', () => {
     expect(notes[0]).toBe('note 21');
     expect(notes).not.toContain('merged');
     expect(notes).not.toContain('other brand');
+  });
+
+  it('lists open notes with their ids', async () => {
+    const brand = await createBrand(db, { name: 'Ids', createdBy: 'u1' });
+    const id = await addDnaFeedback(db, brand.id, 'warmer');
+    const mergedId = await addDnaFeedback(db, brand.id, 'old');
+    await markFeedbackMerged(db, brand.id, [mergedId]);
+
+    expect(await listOpenFeedbackNotes(db, brand.id)).toEqual([{ id, note: 'warmer' }]);
   });
 
   function capturingBrain() {
