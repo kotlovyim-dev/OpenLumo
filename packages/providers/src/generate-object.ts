@@ -39,7 +39,7 @@ export async function generateObject<T>(
   model: LanguageModel,
   { schema, schemaName, ...request }: GenerateObjectRequest<T>,
 ): Promise<{ value: T; usage: Usage }> {
-  const jsonSchema = { name: schemaName, schema: z.toJSONSchema(schema) };
+  const jsonSchema = { name: schemaName, schema: z.toJSONSchema(schema, { io: 'input' }) };
   const first = await model.complete({ ...request, jsonSchema });
   const firstParse = parseAgainst(schema, first.text);
   if ('value' in firstParse) return { value: firstParse.value, usage: first.usage };

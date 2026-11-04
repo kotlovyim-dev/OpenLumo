@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+const hexColour = z
+  .string()
+  .regex(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i, 'Use a hex colour like #1a2b3c.')
+  .transform((value) => {
+    const digits = value.slice(1).toLowerCase();
+    return `#${digits.length === 3 ? [...digits].map((digit) => digit + digit).join('') : digits}`;
+  });
+
 const toneScale = z.number().min(0).max(10);
 
 export const brandDnaSchema = z.object({
@@ -26,7 +34,7 @@ export const brandDnaSchema = z.object({
     samplePhrases: z.array(z.string()),
   }),
   visuals: z.object({
-    palette: z.array(z.string()),
+    palette: z.array(hexColour),
     typography: z.string(),
     imageStyle: z.string(),
     logoAssetId: z.uuid().optional(),

@@ -11,40 +11,27 @@ import {
 } from '@openlumo/core';
 import type { Database } from '@openlumo/db';
 import { findBrandAccess } from '../brands/brand-access';
-import { HEX_COLOR } from './hex-color';
+import { toFieldErrors, type FieldErrors } from '../../lib/field-errors';
 
 export type DnaContext = { db: Database; boss: Queue; user: { id: string } };
-
-export type FieldErrors = Record<string, string>;
 
 export type DnaResult =
   | { ok: true }
   | { ok: false; error: 'forbidden' | 'not_found' | 'invalid_input'; fieldErrors?: FieldErrors };
 
-const dnaInputSchema = brandDnaSchema.extend({
-  visuals: brandDnaSchema.shape.visuals.extend({
-    palette: z.array(z.string().regex(HEX_COLOR, 'Use a hex colour like #1a2b3c.')),
-  }),
-});
-
 const noteSchema = z.string().trim().min(1).max(2000);
-
-export function toFieldErrors(error: z.ZodError): FieldErrors {
-  const fieldErrors: FieldErrors = {};
-  for (const issue of error.issues) {
-    const key = issue.path.join('.');
-    if (!(key in fieldErrors)) fieldErrors[key] = issue.message;
-  }
-  return fieldErrors;
-}
 
 export async function updateBrandDna(context: DnaContext, brandId: string, dna: unknown): Promise<DnaResult> {
   if (!(await findBrandAccess(context.db, context.user.id, brandId, 'editor'))) return { ok: false, error: 'forbidden' };
-  const parsed = dnaInputSchema.safeParse(dna);
+  const parsed = brandDnaSchema.safeParse(dna);
   if (!parsed.success) return { ok: false, error: 'invalid_input', fieldErrors: toFieldErrors(parsed.error) };
   const brand = await findBrand(context.db, brandId);
   if (!brand) return { ok: false, error: 'not_found' };
-  await saveBrandDna(context.db, brandId, parsed.data);
+  const stored = await getBrandDna(context.db, brandId);
+  await saveBrandDna(context.db, brandId, {
+    ...parsed.data,
+    visuals: { ...parsed.data.visuals, logoAssetId: stored?.dna.visuals.logoAssetId },
+  });
   if (brand.status === 'needs_input') await setBrandStatus(context.db, brandId, 'ready');
   return { ok: true };
 }

@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { updateBrandDna } from './actions';
 import { ChipsField, PaletteField, TextField, ToneField } from './dna-fields';
-import { HEX_COLOR } from './hex-color';
 
 const tones = [
   { key: 'formalToCasual', label: 'Formality', low: 'Formal', high: 'Casual' },
@@ -41,12 +40,12 @@ export function DnaForm({ brandId, initial, canEdit }: { brandId: string; initia
     return found;
   }
 
+  function errorFor(id: string) {
+    return errors[id] ?? Object.entries(errors).find(([key]) => key.startsWith(`${id}.`))?.[1];
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (dna.visuals.palette.some((colour) => !HEX_COLOR.test(colour))) {
-      setErrors({ 'visuals.palette': 'Fix the highlighted colours first.' });
-      return;
-    }
     setPending(true);
     setMessage(null);
     try {
@@ -68,10 +67,10 @@ export function DnaForm({ brandId, initial, canEdit }: { brandId: string; initia
 
   const { identity, audience, voice, visuals } = dna;
   const text = (id: string, label: string, value: string, onChange: (value: string) => void, multiline?: boolean) => (
-    <TextField id={id} label={label} value={value} onChange={onChange} error={errors[id]} readOnly={readOnly} multiline={multiline} />
+    <TextField id={id} label={label} value={value} onChange={onChange} error={errorFor(id)} readOnly={readOnly} multiline={multiline} />
   );
   const chips = (id: string, label: string, values: string[], onChange: (values: string[]) => void) => (
-    <ChipsField id={id} label={label} values={values} onChange={onChange} error={errors[id]} readOnly={readOnly} />
+    <ChipsField id={id} label={label} values={values} onChange={onChange} error={errorFor(id)} readOnly={readOnly} />
   );
 
   return (

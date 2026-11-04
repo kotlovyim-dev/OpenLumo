@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { useJobEvents } from '@/hooks/use-job-events';
 import { addFeedbackAction, mergeFeedbackAction } from './actions';
 
+const genericError = 'Something went wrong. Try again.';
+
 export function FeedbackPanel({
   brandId,
   notes,
@@ -36,22 +38,31 @@ export function FeedbackPanel({
   async function add(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    const result = await addFeedbackAction(brandId, draft);
-    if (!result.ok) {
-      setError(result.fieldErrors?.note ?? 'Something went wrong. Try again.');
-      return;
+    try {
+      const result = await addFeedbackAction(brandId, draft);
+      if (!result.ok) {
+        setError(result.fieldErrors?.note ?? genericError);
+        return;
+      }
+      setDraft('');
+      router.refresh();
+    } catch {
+      setError(genericError);
     }
-    setDraft('');
-    router.refresh();
   }
 
   async function merge() {
     setError(null);
     setStep('Applying your feedback');
-    const result = await mergeFeedbackAction(brandId);
-    if (!result.ok) {
+    try {
+      const result = await mergeFeedbackAction(brandId);
+      if (!result.ok) {
+        setStep(null);
+        setError(genericError);
+      }
+    } catch {
       setStep(null);
-      setError('Something went wrong. Try again.');
+      setError(genericError);
     }
   }
 

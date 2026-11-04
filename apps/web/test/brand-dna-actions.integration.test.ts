@@ -10,7 +10,7 @@ import {
   saveBrandDna,
   type Queue,
 } from '@openlumo/core';
-import { brands, jobRuns, users } from '@openlumo/db';
+import { brands, contentItems, jobRuns, users } from '@openlumo/db';
 import { createTestDatabase } from '@openlumo/db/testing';
 import { addFeedback, requestFeedbackMerge, updateBrandDna } from '../src/features/brand-dna/dna-service';
 import { createStrategyForBrand, planMore } from '../src/features/strategy/strategy-service';
@@ -117,13 +117,64 @@ describe('brand dna and strategy actions', () => {
     expect(run?.idempotencyKey).toBeNull();
   });
 
-  it('collapses "Plan more" to one run per UTC day', async () => {
-    const day = new Date('2026-11-04T23:30:00Z');
-    await planMore(context(owner), brandId, day);
-    await planMore(context(owner), brandId, day);
-    await planMore(context(owner), brandId, new Date('2026-11-05T00:10:00Z'));
-    const keys = (await runsOf('plan.top-up')).map((run) => run.idempotencyKey).sort();
-    expect(keys).toEqual([`top-up:${brandId}:2026-11-04`, `top-up:${brandId}:2026-11-05`]);
-    expect(await planMore(context(viewer), brandId)).toEqual({ ok: false, error: 'forbidden' });
+  it('keeps the stored logo, strips unknown keys and leaves other brands untouched', async () => {
+    const logoAssetId = crypto.randomUUID();
+    const other = await createBrand(database.db, { name: 'Other', createdBy: 'owner' });
+    await saveBrandDna(database.db, brandId, {
+      ...validDna(),
+      visuals: { ...validDna().visuals, logoAssetId },
+    });
+    await saveBrandDna(database.db, other.id, createPartialBrandDna({ name: 'Other', palette: ['#000000'] }));
+
+    const forged = { ...validDna(), extra: 'x', visuals: { ...validDna().visuals, logoAssetId: crypto.randomUUID(), palette: ['#ABC'] } };
+    expect(await updateBrandDna(context(owner), brandId, forged)).toEqual({ ok: true });
+
+    const saved = await getBrandDna(database.db, brandId);
+    expect(saved?.dna.visuals.logoAssetId).toBe(logoAssetId);
+    expect(saved?.dna.visuals.palette).toEqual(['#aabbcc']);
+    expect(saved?.dna).not.toHaveProperty('extra');
+    expect((await getBrandDna(database.db, other.id))?.dna.identity.name).toBe('Other');
+    expect((await getBrandDna(database.db, other.id))?.version).toBe(1);
+  });
+
+  describe('plan more', () => {
+    const now = new Date('2026-11-04T10:00:00Z');
+
+    async function planUntil(date: Date) {
+      await database.db.insert(contentItems).values({
+        brandId,
+        channel: 'email',
+        format: 'email',
+        status: 'suggested',
+        scheduledAt: date,
+      });
+    }
+
+    it('refuses when planned items already reach two weeks ahead', async () => {
+      await planUntil(new Date('2026-11-18T10:00:00Z'));
+      expect(await planMore(context(owner), brandId, now)).toEqual({ ok: false, error: 'already_planned' });
+      expect(await runsOf('plan.top-up')).toHaveLength(0);
+    });
+
+    it('enqueues keyed by coverage end, so a completed top-up gives the next click a new run', async () => {
+      await database.db.delete(contentItems).where(eq(contentItems.brandId, brandId));
+      await planUntil(new Date('2026-11-06T09:00:00Z'));
+      expect(await planMore(context(owner), brandId, now)).toEqual({ ok: true });
+      expect(await planMore(context(owner), brandId, now)).toEqual({ ok: true });
+      expect((await runsOf('plan.top-up')).map((run) => run.idempotencyKey)).toEqual([`top-up:${brandId}:2026-11-06`]);
+
+      await planUntil(new Date('2026-11-12T09:00:00Z'));
+      expect(await planMore(context(owner), brandId, now)).toEqual({ ok: true });
+      const keys = (await runsOf('plan.top-up')).map((run) => run.idempotencyKey).sort();
+      expect(keys).toEqual([`top-up:${brandId}:2026-11-06`, `top-up:${brandId}:2026-11-12`]);
+    });
+
+    it('uses today as coverage end when nothing is planned and rejects viewers', async () => {
+      await database.db.delete(contentItems).where(eq(contentItems.brandId, brandId));
+      await database.db.delete(jobRuns).where(eq(jobRuns.type, 'plan.top-up'));
+      await planMore(context(owner), brandId, now);
+      expect((await runsOf('plan.top-up')).map((run) => run.idempotencyKey)).toEqual([`top-up:${brandId}:2026-11-04`]);
+      expect(await planMore(context(viewer), brandId)).toEqual({ ok: false, error: 'forbidden' });
+    });
   });
 });

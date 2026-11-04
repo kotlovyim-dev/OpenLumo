@@ -35,6 +35,18 @@ describe('brandDnaSchema', () => {
     ).toBe(true);
   });
 
+  it('normalises palette colours to lowercase #rrggbb and rejects other values', () => {
+    const withPalette = (palette: string[]) => ({
+      ...(structuredClone(validDna) as object),
+      visuals: { ...(validDna as { visuals: object }).visuals, palette },
+    });
+    const parsed = brandDnaSchema.parse(withPalette(['#FFF', '#1A2B3C', '#abc123']));
+    expect(parsed.visuals.palette).toEqual(['#ffffff', '#1a2b3c', '#abc123']);
+    for (const bad of ['red', '#ggg', '#12345', 'ffffff', '#1234567']) {
+      expect(brandDnaSchema.safeParse(withPalette([bad])).success).toBe(false);
+    }
+  });
+
   it('rejects a tone of 11', () => {
     const dna = structuredClone(validDna) as { voice: { tone: { formalToCasual: number } } };
     dna.voice.tone.formalToCasual = 11;

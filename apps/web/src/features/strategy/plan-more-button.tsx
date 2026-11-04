@@ -4,18 +4,22 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { planMoreAction } from './actions';
 
+const genericError = 'Something went wrong. Try again.';
+
 export function PlanMoreButton({ brandId }: { brandId: string }) {
   const [pending, setPending] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   async function planMore() {
     setPending(true);
-    setFailed(false);
+    setMessage(null);
     try {
       const result = await planMoreAction(brandId);
-      if (!result.ok) setFailed(true);
+      if (!result.ok) {
+        setMessage(result.error === 'already_planned' ? "You're already planned two weeks ahead." : genericError);
+      }
     } catch {
-      setFailed(true);
+      setMessage(genericError);
     } finally {
       setPending(false);
     }
@@ -26,11 +30,9 @@ export function PlanMoreButton({ brandId }: { brandId: string }) {
       <Button type="button" onClick={planMore} disabled={pending}>
         Plan more
       </Button>
-      {failed && (
-        <p role="alert" className="text-sm text-danger">
-          Something went wrong. Try again.
-        </p>
-      )}
+      <p role="status" className="text-sm text-muted">
+        {message}
+      </p>
     </div>
   );
 }

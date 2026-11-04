@@ -5,9 +5,6 @@ import { Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { HEX_COLOR } from './hex-color';
-
-
 
 type FieldProps = { id: string; label: string; error?: string; readOnly: boolean };
 
@@ -175,15 +172,14 @@ export function PaletteField({
       <Label htmlFor={`${id}-0`}>{label}</Label>
       <ul className="flex flex-col gap-2">
         {values.map((value, index) => {
-          const invalid = !HEX_COLOR.test(value);
-          const message = errors[index] ?? (invalid ? 'Use a hex colour like #1a2b3c.' : undefined);
+          const message = errors[index];
           return (
             <li key={index} className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
                 <span
                   aria-hidden
                   className="size-10 shrink-0 rounded-control border border-border"
-                  style={{ backgroundColor: invalid ? 'transparent' : value }}
+                  style={{ backgroundColor: /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value) ? value : 'transparent' }}
                 />
                 <Input
                   id={`${id}-${index}`}

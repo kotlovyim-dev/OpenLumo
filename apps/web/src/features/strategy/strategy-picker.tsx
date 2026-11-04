@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import type { Channel, Goal } from '@openlumo/core';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useJobEvents } from '@/hooks/use-job-events';
 import { createStrategyAction } from './actions';
 import { channelDotClasses, channelLabels } from './channel-style';
 
@@ -23,6 +24,12 @@ export function StrategyPicker({ brandId }: { brandId: string }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
 
+  useJobEvents(brandId, (event) => {
+    if (event.type !== 'strategy.create' || event.status !== 'failed') return;
+    setPending(false);
+    setErrors({ form: 'Lumo could not create your strategy. Try again.' });
+  });
+
   function toggle(channel: Channel) {
     setChannels((current) =>
       current.includes(channel) ? current.filter((entry) => entry !== channel) : [...current, channel],
@@ -35,11 +42,13 @@ export function StrategyPicker({ brandId }: { brandId: string }) {
     setErrors({});
     try {
       const result = await createStrategyAction(brandId, goal, channels);
-      if (!result.ok) setErrors(result.fieldErrors ?? { form: 'Something went wrong. Try again.' });
+      if (!result.ok) {
+        setPending(false);
+        setErrors(result.fieldErrors ?? { form: 'Something went wrong. Try again.' });
+      }
     } catch {
-      setErrors({ form: 'Something went wrong. Try again.' });
-    } finally {
       setPending(false);
+      setErrors({ form: 'Something went wrong. Try again.' });
     }
   }
 

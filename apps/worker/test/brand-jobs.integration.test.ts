@@ -12,6 +12,8 @@ import {
   createAssetStorage,
   addDnaFeedback,
   createBrand,
+  createPartialBrandDna,
+  saveBrandDna,
   getBrandDna,
   listOpenFeedbackNotes,
   setBrandStatus,
@@ -254,6 +256,18 @@ describe('brand jobs', () => {
       expect(await listOpenFeedbackNotes(db, brand.id)).toEqual([]);
       expect(steps).toEqual(['Applying your feedback']);
       expect(await brandStatus(brand.id)).toBe('ready');
+    });
+
+    it('leaves a concurrent manual edit and the open notes alone', async () => {
+      const brand = await readyBrand();
+      await addDnaFeedback(db, brand.id, 'Be bolder');
+      const manual = createPartialBrandDna({ name: 'Manual edit', palette: [] });
+      await createBrandSynthesizeDnaJob(deps()).run(
+        { brandId: brand.id, mergeFeedback: true },
+        { ...context, recordUsage: async () => saveBrandDna(db, brand.id, manual) },
+      );
+      expect((await getBrandDna(db, brand.id))?.dna.identity.name).toBe('Manual edit');
+      expect(await listOpenFeedbackNotes(db, brand.id)).toHaveLength(1);
     });
 
     it('succeeds without a model call or version bump when there are no open notes', async () => {
