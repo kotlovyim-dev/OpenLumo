@@ -1,12 +1,12 @@
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { generateObject, type LanguageModel, type Usage } from '@openlumo/providers';
-import { dnaFeedback, type Database } from '@openlumo/db';
+import { dnaFeedback, type Database, type Transaction } from '@openlumo/db';
 import { buildMergeFeedbackMessages } from './brand-dna-prompts';
 import { type BrandDna, brandDnaSchema } from './brand-dna-schema';
 
 const OPEN_FEEDBACK_LIMIT = 20;
 
-export async function addDnaFeedback(db: Database, brandId: string, note: string, itemId?: string): Promise<string> {
+export async function addDnaFeedback(db: Database | Transaction, brandId: string, note: string, itemId?: string): Promise<string> {
   const [row] = await db.insert(dnaFeedback).values({ brandId, note, itemId }).returning({ id: dnaFeedback.id });
   return row!.id;
 }

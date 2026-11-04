@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { assets, brandSources, type Database } from '@openlumo/db';
+import { assets, brandSources, type Database, type Transaction } from '@openlumo/db';
 import type { AssetStorage } from '../assets/asset-storage';
 import { brandStorageKey } from '../assets/brand-storage-key';
 import type { CrawlResult } from './crawl-site';
@@ -24,8 +24,6 @@ const logoExtensions: Record<string, string> = {
   'image/x-icon': 'ico',
   'image/vnd.microsoft.icon': 'ico',
 };
-
-type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 async function storeLogo(
   tx: Transaction,

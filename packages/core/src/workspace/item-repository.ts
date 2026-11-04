@@ -1,5 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm';
-import { contentItems, type Database, itemVersions } from '@openlumo/db';
+import { contentItems, type Database, itemVersions, type Transaction } from '@openlumo/db';
 import type { FormatCopy } from '../studio/format-schemas';
 
 export type ContentItem = typeof contentItems.$inferSelect;
@@ -16,7 +16,7 @@ export class ItemNotFoundError extends Error {
   }
 }
 
-export async function getVersion(db: Database, itemId: string, number: number): Promise<ItemVersion | null> {
+export async function getVersion(db: Database | Transaction, itemId: string, number: number): Promise<ItemVersion | null> {
   const [row] = await db
     .select()
     .from(itemVersions)
@@ -25,7 +25,7 @@ export async function getVersion(db: Database, itemId: string, number: number): 
 }
 
 export async function appendVersion(
-  db: Database,
+  db: Database | Transaction,
   itemId: string,
   targetVersion: number,
   version: NewVersion,
@@ -43,7 +43,7 @@ export async function appendVersion(
       .where(
         and(
           eq(contentItems.id, itemId),
-          sql`${contentItems.currentVersionId} is null or ${inserted.number} > (select number from item_versions where id = ${contentItems.currentVersionId})`,
+          sql`(${contentItems.currentVersionId} is null or ${inserted.number} > (select number from item_versions where id = ${contentItems.currentVersionId}))`,
         ),
       );
     return inserted;
@@ -62,6 +62,6 @@ export async function getItemWithCurrentVersion(
   return row ?? null;
 }
 
-export async function attachAssets(db: Database, versionId: string, assetIds: string[]): Promise<void> {
+export async function attachAssets(db: Database | Transaction, versionId: string, assetIds: string[]): Promise<void> {
   await db.update(itemVersions).set({ assetIds }).where(eq(itemVersions.id, versionId));
 }
