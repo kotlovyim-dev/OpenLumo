@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { addBrandMember, createBrand, enqueue, type Queue } from '@openlumo/core';
+import { addBrandMember, createBrand, enqueue, setBrandStatus, type Queue } from '@openlumo/core';
 import { users, type Database } from '@openlumo/db';
 import { findBrandAccess } from './brand-access';
 
@@ -10,7 +10,7 @@ export type CreateBrandResult =
   | { ok: true; brandId: string }
   | { ok: false; error: 'invalid_input'; fieldErrors: { name?: string; url?: string } };
 
-export type InviteResult = { ok: true } | { ok: false; error: 'invalid_input' | 'user_not_found' | 'forbidden' };
+export type InviteResult = { ok: true } | { ok: false; error: 'invalid_input' | 'user_not_found' | 'forbidden' | 'already_member' };
 
 function isWebAddress(value: string) {
   try {
@@ -54,13 +54,18 @@ export async function createBrandForUser(context: BrandContext, formData: FormDa
     createdBy: context.user.id,
   });
   if (url) {
-    await enqueue(
-      context.boss,
-      context.db,
-      'brand.crawl',
-      { brandId: brand.id },
-      { idempotencyKey: `crawl:${brand.id}` },
-    );
+    try {
+      await enqueue(
+        context.boss,
+        context.db,
+        'brand.crawl',
+        { brandId: brand.id },
+        { idempotencyKey: `crawl:${brand.id}` },
+      );
+    } catch (error) {
+      console.error(`Could not enqueue crawl for brand ${brand.id}`, error);
+      await setBrandStatus(context.db, brand.id, 'needs_input');
+    }
   }
   return { ok: true, brandId: brand.id };
 }
@@ -78,6 +83,6 @@ export async function inviteMember(
   if (!parsed.success) return { ok: false, error: 'invalid_input' };
   const [invitee] = await context.db.select({ id: users.id }).from(users).where(eq(users.email, parsed.data.email));
   if (!invitee) return { ok: false, error: 'user_not_found' };
-  await addBrandMember(context.db, brandId, invitee.id, parsed.data.role);
-  return { ok: true };
+  const added = await addBrandMember(context.db, brandId, invitee.id, parsed.data.role);
+  return added ? { ok: true } : { ok: false, error: 'already_member' };
 }

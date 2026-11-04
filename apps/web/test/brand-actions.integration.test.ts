@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { createQueue, type JobEvent, type Queue } from '@openlumo/core';
 import { brandMembers, brands, jobRuns, users } from '@openlumo/db';
@@ -69,6 +69,19 @@ describe('brand actions', () => {
     }
   });
 
+  it('falls back to manual input when the crawl cannot be enqueued', async () => {
+    const failingBoss = { send: async () => { throw new Error('queue down'); } } as unknown as Queue;
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await createBrandForUser(
+      { db: database.db, boss: failingBoss, user: { id: 'owner' } },
+      brandForm({ name: 'Down', url: 'https://down.example' }),
+    );
+    errors.mockRestore();
+    if (!result.ok) throw new Error('expected success');
+    expect(await statusOf(result.brandId)).toBe('needs_input');
+    expect(await runsOf(result.brandId)).toHaveLength(0);
+  });
+
   describe('invites and events', () => {
     let brandId: string;
 
@@ -86,6 +99,29 @@ describe('brand actions', () => {
       expect(await inviteMember(owner, brandId, 'Invitee@Example.com', 'editor')).toEqual({ ok: true });
       const members = await database.db.select().from(brandMembers).where(eq(brandMembers.brandId, brandId));
       expect(members.find((member) => member.userId === 'invitee')?.role).toBe('editor');
+    });
+
+    it('never changes an existing member role through an invite', async () => {
+      const owner = { db: database.db, user: { id: 'owner' } };
+      expect(await inviteMember(owner, brandId, 'owner@example.com', 'viewer')).toEqual({
+        ok: false,
+        error: 'already_member',
+      });
+      expect(await inviteMember(owner, brandId, 'invitee@example.com', 'viewer')).toEqual({
+        ok: false,
+        error: 'already_member',
+      });
+      const members = await database.db.select().from(brandMembers).where(eq(brandMembers.brandId, brandId));
+      expect(members.find((member) => member.userId === 'owner')?.role).toBe('owner');
+      expect(members.find((member) => member.userId === 'invitee')?.role).toBe('editor');
+    });
+
+    it('rejects inviting with the owner role', async () => {
+      const owner = { db: database.db, user: { id: 'owner' } };
+      expect(await inviteMember(owner, brandId, 'other@example.com', 'owner')).toEqual({
+        ok: false,
+        error: 'invalid_input',
+      });
     });
 
     it('reports an unknown email', async () => {
@@ -111,6 +147,27 @@ describe('brand actions', () => {
         new AbortController().signal,
       );
       expect(response.status).toBe(404);
+    });
+
+    it('closes the stream when the hub reports a reconnect', async () => {
+      let reconnect: () => void = () => {};
+      let unsubscribed = 0;
+      const subscribe = (_brandId: string, _listener: unknown, onReconnect?: () => void) => {
+        reconnect = onReconnect ?? reconnect;
+        return () => {
+          unsubscribed++;
+        };
+      };
+      const response = await openBrandEventStream(
+        { db: database.db, user: { id: 'owner' }, subscribe },
+        brandId,
+        new AbortController().signal,
+      );
+      const reader = response.body!.getReader();
+      await reader.read();
+      reconnect();
+      expect((await reader.read()).done).toBe(true);
+      expect(unsubscribed).toBe(1);
     });
 
     it('streams events to a member and unsubscribes on abort', async () => {

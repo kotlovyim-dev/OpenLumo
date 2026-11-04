@@ -5,23 +5,27 @@ type JobEventListener = (event: JobEvent) => void;
 type Listen = (onEvent: JobEventListener, options: { onClose: () => void }) => Promise<() => Promise<void>>;
 
 export type JobEventHub = {
-  subscribe: (brandId: string, listener: JobEventListener) => () => void;
+  subscribe: (brandId: string, listener: JobEventListener, onReconnect?: () => void) => () => void;
 };
 
+type Subscriber = { listener: JobEventListener; onReconnect?: () => void };
+
 export function createJobEventHub(listen: Listen, { initialDelayMs = 1000, maxDelayMs = 30000 } = {}): JobEventHub {
-  const listeners = new Map<string, Set<JobEventListener>>();
+  const subscribers = new Map<string, Set<Subscriber>>();
   let generation = 0;
   let delayMs = initialDelayMs;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let unlisten: (() => Promise<void>) | undefined;
+  let connectionLost = false;
 
   function dispatch(event: JobEvent) {
-    for (const listener of listeners.get(event.brandId) ?? []) listener(event);
+    for (const { listener } of subscribers.get(event.brandId) ?? []) listener(event);
   }
 
   function retry(attempt: number) {
-    unlisten = undefined;
     if (attempt !== generation) return;
+    unlisten = undefined;
+    connectionLost = true;
     timer = setTimeout(() => void connect(attempt), delayMs);
     delayMs = Math.min(delayMs * 2, maxDelayMs);
   }
@@ -35,6 +39,12 @@ export function createJobEventHub(listen: Listen, { initialDelayMs = 1000, maxDe
       }
       unlisten = stop;
       delayMs = initialDelayMs;
+      if (connectionLost) {
+        connectionLost = false;
+        for (const brandSubscribers of [...subscribers.values()]) {
+          for (const { onReconnect } of [...brandSubscribers]) onReconnect?.();
+        }
+      }
     } catch {
       retry(attempt);
     }
@@ -44,22 +54,27 @@ export function createJobEventHub(listen: Listen, { initialDelayMs = 1000, maxDe
     generation++;
     clearTimeout(timer);
     delayMs = initialDelayMs;
+    connectionLost = false;
     const stopListening = unlisten;
     unlisten = undefined;
     void stopListening?.();
   }
 
   return {
-    subscribe(brandId, listener) {
-      const wasIdle = listeners.size === 0;
-      const brandListeners = listeners.get(brandId) ?? new Set<JobEventListener>();
-      brandListeners.add(listener);
-      listeners.set(brandId, brandListeners);
+    subscribe(brandId, listener, onReconnect) {
+      const wasIdle = subscribers.size === 0;
+      const subscriber: Subscriber = { listener, onReconnect };
+      const brandSubscribers = subscribers.get(brandId) ?? new Set<Subscriber>();
+      brandSubscribers.add(subscriber);
+      subscribers.set(brandId, brandSubscribers);
       if (wasIdle) void connect(++generation);
+      let done = false;
       return () => {
-        brandListeners.delete(listener);
-        if (brandListeners.size === 0) listeners.delete(brandId);
-        if (listeners.size === 0) stop();
+        if (done) return;
+        done = true;
+        brandSubscribers.delete(subscriber);
+        if (brandSubscribers.size === 0) subscribers.delete(brandId);
+        if (subscribers.size === 0) stop();
       };
     },
   };

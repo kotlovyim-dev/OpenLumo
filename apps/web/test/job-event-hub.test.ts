@@ -72,6 +72,35 @@ describe('job event hub', () => {
     expect(listen).toHaveBeenCalledTimes(5);
   });
 
+  it('notifies subscribers once the connection is back after a loss, not on first connect', async () => {
+    const { listen, connections } = fakeListen();
+    const hub = createJobEventHub(listen, { initialDelayMs: 1000, maxDelayMs: 3000 });
+    const onReconnect = vi.fn();
+    hub.subscribe('a', () => {}, onReconnect);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onReconnect).not.toHaveBeenCalled();
+
+    connections[0]!.close();
+    await vi.advanceTimersByTimeAsync(999);
+    expect(onReconnect).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(onReconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('tolerates unsubscribing twice', async () => {
+    const { listen, connections } = fakeListen();
+    const hub = createJobEventHub(listen);
+    const stopFirst = hub.subscribe('a', () => {});
+    const received: JobEvent[] = [];
+    hub.subscribe('a', (e) => received.push(e));
+    await vi.advanceTimersByTimeAsync(0);
+    stopFirst();
+    stopFirst();
+    expect(connections[0]!.stopped).toBe(false);
+    connections[0]!.emit(event('a'));
+    expect(received).toHaveLength(1);
+  });
+
   it('stops listening when the last subscriber leaves and does not reconnect', async () => {
     const { listen, connections } = fakeListen();
     const hub = createJobEventHub(listen);

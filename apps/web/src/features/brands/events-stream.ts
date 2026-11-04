@@ -7,7 +7,7 @@ const heartbeatMs = 25000;
 export type EventStreamContext = {
   db: Database;
   user: { id: string };
-  subscribe: (brandId: string, listener: (event: JobEvent) => void) => () => void;
+  subscribe: (brandId: string, listener: (event: JobEvent) => void, onReconnect?: () => void) => () => void;
 };
 
 export async function openBrandEventStream(
@@ -19,36 +19,49 @@ export async function openBrandEventStream(
     return new Response(null, { status: 404 });
   }
   const encoder = new TextEncoder();
-  let cleanup = () => {};
+  let closed = false;
+  let release = () => {};
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
       if (signal.aborted) {
         controller.close();
         return;
       }
-      const unsubscribe = context.subscribe(brandId, (event) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
-      });
-      const heartbeat = setInterval(() => controller.enqueue(encoder.encode(': heartbeat\n\n')), heartbeatMs);
-      cleanup = () => {
+      const send = (chunk: string) => {
+        if (!closed) controller.enqueue(encoder.encode(chunk));
+      };
+      const unsubscribe = context.subscribe(
+        brandId,
+        (event) => send(`data: ${JSON.stringify(event)}\n\n`),
+        () => {
+          if (closed) return;
+          release();
+          controller.close();
+        },
+      );
+      const heartbeat = setInterval(() => send(': heartbeat\n\n'), heartbeatMs);
+      release = () => {
+        if (closed) return;
+        closed = true;
         clearInterval(heartbeat);
         unsubscribe();
       };
       signal.addEventListener('abort', () => {
-        cleanup();
+        if (closed) return;
+        release();
         controller.close();
       });
-      controller.enqueue(encoder.encode(': connected\n\n'));
+      send(': connected\n\n');
     },
     cancel() {
-      cleanup();
+      release();
     },
   });
   return new Response(body, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
     },
   });
 }

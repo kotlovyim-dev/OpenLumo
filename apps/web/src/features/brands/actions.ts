@@ -2,7 +2,6 @@
 
 import { redirect } from 'next/navigation';
 import { getServerContext } from '@/lib/server-context';
-import { requireBrandAccessOrNotFound } from './brand-access';
 import * as service from './brand-service';
 
 export async function createBrandAction(formData: FormData) {
@@ -14,7 +13,6 @@ export async function createBrandAction(formData: FormData) {
 
 export async function inviteMemberAction(brandId: string, formData: FormData) {
   const { db, user } = await getServerContext();
-  await requireBrandAccessOrNotFound(db, user.id, brandId, 'owner');
   return service.inviteMember(
     { db, user },
     brandId,

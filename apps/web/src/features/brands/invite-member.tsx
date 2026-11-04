@@ -9,6 +9,7 @@ import { inviteMemberAction } from './actions';
 const messages: Record<string, string> = {
   user_not_found: 'No account uses that email yet. Ask them to sign up first.',
   invalid_input: 'Enter a valid email address.',
+  already_member: 'That person is already a member of this brand.',
   forbidden: 'Only a brand owner can invite people.',
 };
 

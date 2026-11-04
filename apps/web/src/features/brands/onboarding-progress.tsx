@@ -20,7 +20,7 @@ export function OnboardingProgress({ brandId }: { brandId: string }) {
       return;
     }
     if (event.step) setStep(event.step);
-  });
+  }, () => router.refresh());
 
   return (
     <div aria-live="polite">

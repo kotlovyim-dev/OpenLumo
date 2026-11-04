@@ -17,9 +17,11 @@ export async function addBrandMember(
   brandId: string,
   userId: string,
   role: MemberRole,
-): Promise<void> {
-  await db
+): Promise<boolean> {
+  const inserted = await db
     .insert(brandMembers)
     .values({ brandId, userId, role })
-    .onConflictDoUpdate({ target: [brandMembers.brandId, brandMembers.userId], set: { role } });
+    .onConflictDoNothing()
+    .returning({ userId: brandMembers.userId });
+  return inserted.length > 0;
 }
