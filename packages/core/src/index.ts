@@ -48,3 +48,5 @@ export * from './chat/reply-to-chat';
 export * from './chat/chat-repository';
 export * from './chat/critique-item';
 export * from './chat/repurpose-item';
+export * from './research/research-schema';
+export * from './research/research-repository';

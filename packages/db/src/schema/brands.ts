@@ -59,3 +59,15 @@ export const dnaFeedback = pgTable('dna_feedback', {
   merged: boolean('merged').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const brandResearch = pgTable('brand_research', {
+  brandId: uuid('brand_id')
+    .primaryKey()
+    .references(() => brands.id, { onDelete: 'cascade' }),
+  status: text('status', { enum: ['succeeded', 'failed'] }).notNull(),
+  brief: text('brief').notNull().default(''),
+  sources: jsonb('sources').notNull().default([]),
+  findings: jsonb('findings'),
+  researchedAt: timestamp('researched_at', { withTimezone: true }),
+  attemptedAt: timestamp('attempted_at', { withTimezone: true }).notNull().defaultNow(),
+});
