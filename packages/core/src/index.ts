@@ -50,3 +50,5 @@ export * from './chat/critique-item';
 export * from './chat/repurpose-item';
 export * from './research/research-schema';
 export * from './research/research-repository';
+export * from './research/research-brand';
+export * from './research/apply-research';

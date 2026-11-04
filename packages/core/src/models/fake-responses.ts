@@ -1,6 +1,7 @@
 import { DAY_MS } from '../time';
 import type { TextRequest } from '@openlumo/providers';
 import type { BrandDna } from '../brand-dna/brand-dna-schema';
+import type { ResearchFindings } from '../research/research-schema';
 import { channelFormats, type Channel } from '../planner/channel-formats';
 import type { StrategyDocument } from '../planner/strategy-schema';
 import type { BlogPostCopy, CarouselCopy, EmailCopy, SocialPostCopy, StaticAdCopy } from '../studio/format-schemas';
@@ -35,6 +36,32 @@ const sunriseBakeryDna: BrandDna = {
   languages: ['en'],
 };
 
+const sunriseResearchFindings: ResearchFindings = {
+  name: 'Sunrise Bakery',
+  features: ['Baked fresh before 6am', 'Weekly delivery to your door', 'Pre-order online by 8pm'],
+  audience: {
+    segments: ['Local families', 'Busy commuters', 'Cafes needing a morning supplier'],
+    painPoints: ['Supermarket bread tastes stale', 'No time to shop in the morning'],
+    buyingTriggers: ['Weekend breakfast', 'Running low on bread'],
+    objections: ['Handmade bread costs more'],
+    channels: ['Neighbourhood Facebook groups', 'Instagram', 'Local food blogs'],
+  },
+  competitors: [
+    {
+      name: 'Golden Crust Bakery',
+      url: '',
+      positioning: 'A bakery chain with low prices and long opening hours.',
+      strengths: ['Many locations'],
+      weaknesses: ['Bread is baked off-site'],
+      sourceUrls: ['https://example.com/sunrise-bakery-review'],
+    },
+  ],
+};
+
+export const fakeResearchBrief =
+  'Sunrise Bakery is a neighbourhood bakery known for bread baked before 6am [example.com](https://example.com/sunrise-bakery-review).';
+
+export const fakeResearchSources = [{ url: 'https://example.com/sunrise-bakery-review', title: 'Sunrise Bakery review' }];
 
 function requestText(request: TextRequest): string {
   return request.messages.map((message) => message.content).join('\n');
@@ -133,6 +160,7 @@ const blogPostCopy: BlogPostCopy = {
 
 export const fakeResponses: Record<string, (request: TextRequest) => unknown> = {
   brand_dna: () => sunriseBakeryDna,
+  brand_research: () => sunriseResearchFindings,
   merged_brand_dna: () => sunriseBakeryDna,
   strategy: strategyFor,
   content_plan: contentPlanFor,
