@@ -23,7 +23,8 @@ export const formatGuidance: Record<ItemFormat, string> = {
     'The headline states the outcome or the offer, never the brand name, within the length the channel rules give.',
     'Put the hook and the offer in the first 125 characters of the primary text.',
     'Use proof such as a number, a named customer or a rating only when the Brand DNA gives one.',
-    'The call to action is one short verb phrase that fits the goal, such as "Order today" or "Get the guide".',
+    'The call to action is one short verb phrase that fits the goal, such as "Order today" or "Get the guide". It labels the link button, so never send readers anywhere else for the link.',
+    'No hashtags.',
   ].join('\n'),
   email: [
     'Write a subject line, a preheader and the email body.',

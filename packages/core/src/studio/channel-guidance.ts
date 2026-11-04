@@ -1,8 +1,5 @@
 import type { Channel } from '../planner/channel-formats';
 
-const metaAdRule =
-  'Ads: headline up to 27 characters; primary text of 50 to 150 characters with the hook and the offer in the first 125.';
-
 export const channelGuidance: Record<Channel, string> = {
   instagram: [
     'Write something a reader would save or send to one specific person: a checklist, a sharp opinion or a relatable moment.',
@@ -11,7 +8,6 @@ export const channelGuidance: Record<Channel, string> = {
     'Hashtags: 3 to 5 specific topical tags, never generic ones such as #love or #instagood.',
     'Links: write "link in bio", never a URL.',
     'Carousels: 6 to 8 slides, with a cover that makes people swipe.',
-    metaAdRule,
   ].join('\n'),
   facebook: [
     'Posts: 1 to 3 short lines that people would forward privately on Messenger or WhatsApp.',
@@ -19,7 +15,6 @@ export const channelGuidance: Record<Channel, string> = {
     'Hashtags: 0 to 2.',
     'Links: write "link in the first comment", never a URL in the post.',
     'Carousels: 6 to 8 slides.',
-    metaAdRule,
   ].join('\n'),
   linkedin: [
     'The first two lines (about 140 characters) decide the "see more" click: open with a specific claim, a number or a counter-intuitive result.',
@@ -30,7 +25,6 @@ export const channelGuidance: Record<Channel, string> = {
     'Links: write "link in the first comment", never a URL in the post.',
     'Emoji: at most 1.',
     'Carousels: 8 slides with large type and one idea per slide.',
-    'Ads: intro text up to 150 characters, headline up to 50 characters.',
   ].join('\n'),
   x: [
     'Posts: one standalone post of 1 or 2 sentences, under 200 characters, with one concrete claim people can reply to or quote.',

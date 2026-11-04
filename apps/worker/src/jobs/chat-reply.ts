@@ -49,7 +49,10 @@ function createToolExecutor({ db, boss }: WorkerDependencies, message: ChatMessa
       const found = await findOwnItem(itemId);
       if (!found) return notFound(itemId);
       if (!found.version) return { result: `Item ${itemId} has no copy yet.` };
-      return { result: describeItemForCritique(found.item, found.version.copy) };
+      return {
+        result: describeItemForCritique(found.item, found.version.copy as FormatCopy),
+        storedResult: `Critique of item ${itemId} returned.`,
+      };
     },
     async repurpose_item({ itemId: sourceId, channel, format, angle }) {
       const found = await findOwnItem(sourceId);
@@ -90,8 +93,8 @@ export function createChatReplyJob(deps: WorkerDependencies) {
         brain.modelId,
         chatContext,
         async (call) => {
-          const outcome = await execute(call);
-          executed.push({ ...call, ...outcome });
+          const { storedResult, ...outcome } = await execute(call);
+          executed.push({ ...call, ...outcome, result: storedResult ?? outcome.result });
           return outcome.result;
         },
         (total) => {

@@ -21,6 +21,7 @@ export async function planContent(
   });
   const start = input.from.getTime();
   const end = start + input.days * DAY_MS;
+  const cadenceChannels = new Set(input.strategy.cadence.map((entry) => entry.channel));
   const slots = value.slots
     .map(({ date, time, ...slot }) => ({
       ...slot,
@@ -28,6 +29,7 @@ export async function planContent(
     }))
     .filter(
       (slot) =>
+        cadenceChannels.has(slot.channel) &&
         channelFormats[slot.channel].includes(slot.format) &&
         slot.scheduledAt.getTime() >= start &&
         slot.scheduledAt.getTime() < end,

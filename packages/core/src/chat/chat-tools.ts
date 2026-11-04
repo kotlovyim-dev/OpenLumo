@@ -37,7 +37,7 @@ export type RegenerateItemArguments = z.infer<typeof regenerateItemShape>;
 export type CritiqueItemArguments = z.infer<typeof critiqueItemShape>;
 export type RepurposeItemArguments = z.infer<typeof repurposeItemShape>;
 
-export type ToolOutcome = { result: string; itemId?: string };
+export type ToolOutcome = { result: string; itemId?: string; storedResult?: string };
 
 export type ChatToolHandlers = {
   create_draft(args: CreateDraftArguments): Promise<ToolOutcome>;

@@ -234,7 +234,10 @@ describe('chat.reply', () => {
     expect(await db.select().from(contentItems).where(eq(contentItems.brandId, payload.brandId))).toHaveLength(1);
     expect(await db.select().from(jobRuns)).toHaveLength(runsBefore.length);
     const [reply] = await db.select().from(chatMessages).where(eq(chatMessages.replyToId, payload.messageId));
-    expect(reply!.toolCalls).toEqual([expect.not.objectContaining({ itemId: expect.anything() })]);
+    expect(tool.content).toContain('Banned words and phrases found: none.');
+    expect(reply!.toolCalls).toEqual([
+      { id: 't1', name: 'critique_item', arguments: { itemId: item.id }, result: `Critique of item ${item.id} returned.` },
+    ]);
   });
 
   it('repurpose_item creates one draft in the brand whose generate run carries the source text', async () => {

@@ -3,6 +3,7 @@ import type { BrandDna } from '../brand-dna/brand-dna-schema';
 import type { Channel, ItemFormat } from '../planner/channel-formats';
 import { untrustedContentRule } from '../prompts/untrusted-content';
 import { writingRules } from '../prompts/writing-rules';
+import { adRules } from './ad-guidance';
 import { aspectRatioFor } from './aspect-ratio';
 import { channelGuidance } from './channel-guidance';
 import { formatGuidance } from './format-guidance';
@@ -20,7 +21,7 @@ const imageFormats: ItemFormat[] = ['social_post', 'carousel', 'static_ad'];
 
 export function copyRules(channel: Channel, format: ItemFormat): string {
   const sections = [
-    `Rules for ${channel}:\n${channelGuidance[channel]}`,
+    format === 'static_ad' ? `Ad rules for ${channel}:\n${adRules(channel)}` : `Rules for ${channel}:\n${channelGuidance[channel]}`,
     `Rules for the ${format} format:\n${formatGuidance[format]}`,
   ];
   if (imageFormats.includes(format)) sections.push(`Image brief rules:\n${imageBriefRules(aspectRatioFor(channel))}`);
@@ -33,6 +34,7 @@ export function buildCopyMessages(input: CopyInput): Message[] {
     'You are a brand copywriter. Write marketing copy as a structured object that matches the requested format.',
     `Write in the language with BCP 47 code "${input.language}". Follow the brand voice.`,
     untrustedContentRule,
+    'The pillar and the angle give the direction, never facts: take facts only from the Brand DNA and the instruction.',
     `Writing rules:\n${writingRules}`,
     copyRules(item.channel, item.format),
   ].join('\n\n');

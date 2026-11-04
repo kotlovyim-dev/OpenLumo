@@ -10,7 +10,7 @@ import type { ToolOutcome } from './chat-tools';
 import type { ChatContext, ChatItem } from './reply-to-chat';
 
 export type ChatMessage = typeof chatMessages.$inferSelect;
-export type ExecutedToolCall = ToolCall & ToolOutcome;
+export type ExecutedToolCall = ToolCall & Omit<ToolOutcome, 'storedResult'>;
 
 const HISTORY_LENGTH = 30;
 const RECENT_ITEMS = 20;

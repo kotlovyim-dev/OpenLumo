@@ -28,6 +28,13 @@ describe('describeItemForCritique', () => {
     expect(text).toContain('Image brief rules');
     expect(text).not.toContain(channelGuidance.instagram);
   });
+
+  it('lists the banned words and phrases found in the copy', () => {
+    expect(text).toContain('Banned words and phrases found: none.');
+    const slop = { ...post, caption: "Let's dive in: we leverage a seamless bake." };
+    const flagged = describeItemForCritique({ id: 'item-2', channel: 'x', format: 'social_post', status: 'suggested' }, slop);
+    expect(flagged).toContain('Banned words and phrases found: "seamless", "leverage", "Let\'s dive in".');
+  });
 });
 
 describe('buildRepurposeInstruction', () => {

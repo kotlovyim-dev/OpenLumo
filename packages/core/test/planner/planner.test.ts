@@ -49,6 +49,12 @@ describe('planContent', () => {
     expect(slots[0]!.channel).toBe('instagram');
   });
 
+  it('drops a slot on a channel outside the strategy cadence', async () => {
+    expect(strategy.cadence.map((entry) => entry.channel)).toEqual(['instagram']);
+    const { slots } = await planFrom([{ ...slot, channel: 'linkedin' }, slot]);
+    expect(slots.map((planned) => planned.channel)).toEqual(['instagram']);
+  });
+
   it('drops a slot dated 31 days out and one before the window', async () => {
     const { slots } = await planFrom([
       { ...slot, date: '2026-12-06' },

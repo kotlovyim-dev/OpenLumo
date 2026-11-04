@@ -6,6 +6,8 @@ import { buildPlanMessages, buildStrategyMessages } from '../../src/planner/plan
 import { strategyDocumentSchema } from '../../src/planner/strategy-schema';
 
 const dna = createPartialBrandDna({ name: 'Acme', palette: [] });
+const factRule =
+  'Use only facts, numbers, customers and results stated in the Brand DNA; never invent them. Use the number and customer-story patterns only when the DNA has the fact.';
 const strategy = strategyDocumentSchema.parse(fakeResponses.strategy!({ messages: [] } as unknown as TextRequest));
 
 function text(messages: { content: string }[]): string {
@@ -29,6 +31,14 @@ describe('buildStrategyMessages', () => {
     expect(prompt).toContain('no competitor could run it unchanged');
   });
 
+  it('forbids inventing facts', () => {
+    expect(prompt).toContain(factRule);
+  });
+
+  it('caps the x cadence at five a week', () => {
+    expect(text(buildStrategyMessages(dna, 'launch', ['x']))).toContain('x: 3 to 5 posts a week, one a day at most');
+  });
+
   it('gives the default cadence of the requested channels only', () => {
     expect(prompt).toContain('instagram: 3 to 5 posts a week');
     expect(prompt).toContain('email: 1 a week');
@@ -48,9 +58,13 @@ describe('buildPlanMessages', () => {
 
   it('asks for series, a repurposed hero idea and platform-native, brand-specific angles', () => {
     expect(prompt).toContain('named series');
-    expect(prompt).toContain('hero idea repurposed across at least three channels');
+    expect(prompt).toContain('hero idea repurposed across at least three channels, or every channel when there are fewer');
     expect(prompt).toContain('different angle on each channel');
     expect(prompt).toContain('no competitor could post it unchanged');
     expect(prompt).toContain('Never write a generic topic');
+  });
+
+  it('forbids inventing facts', () => {
+    expect(prompt).toContain(factRule);
   });
 });

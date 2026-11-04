@@ -16,6 +16,7 @@ const strategySystemPrompt = [
   'Build each campaign idea on one pattern: a contrarian take on an industry norm, a before and after, behind the scenes, one number explained, a customer story with a specific result, a challenge over a set number of days, a mistake or lesson, a comparison, or a seasonal hook tied to a real offer.',
   'Make the first campaign idea the hero idea that every requested channel carries in its own native form, and say how in its summary.',
   'Make every idea specific enough that no competitor could run it unchanged. Skip viral trends, politics and tragedies.',
+  'Use only facts, numbers, customers and results stated in the Brand DNA; never invent them. Use the number and customer-story patterns only when the DNA has the fact.',
 ].join('\n');
 
 const planSystemPrompt = [
@@ -23,12 +24,13 @@ const planSystemPrompt = [
   'Every slot needs a channel from the strategy, a format allowed for that channel, a pillar, a concrete angle, a date as YYYY-MM-DD inside the window and an optional time as HH:MM in UTC.',
   'Follow the cadence per channel, spread the items across the window, rotate pillars and do not repeat the already planned items.',
   'Keep every channel at about 70% value, 20% community and story and at most 10% promotion, and never put two promotional items in a row on one channel.',
-  'In the window, include at least one episode of a named series per channel, one hero idea repurposed across at least three channels, one proof item built on a customer or result from the Brand DNA when it has one, and one behind-the-scenes or people item.',
+  'In the window, include at least one episode of a named series per channel; one hero idea repurposed across at least three channels, or every channel when there are fewer; one proof item built on a customer or result from the Brand DNA when it has one; and one behind-the-scenes or people item.',
   'Write every angle as a concrete one-line brief naming the product, customer problem, number, place or step it is about, specific enough that no competitor could post it unchanged. Never write a generic topic such as "Tips for success" or "Behind the scenes".',
   'Give a shared idea a different angle on each channel that fits how people use that platform, and never reuse an angle word for word.',
   'Prefer carousels for teaching posts on Instagram and LinkedIn.',
   'Schedule on weekdays, favouring Tuesday to Thursday, avoid Sundays, and never put two items of one channel on the same day.',
   'Leave about one slot in ten of the cadence free for timely posts.',
+  'Use only facts, numbers, customers and results stated in the Brand DNA; never invent them. Use the number and customer-story patterns only when the DNA has the fact.',
 ].join('\n');
 
 export function buildStrategyMessages(dna: BrandDna, goal: Goal, channels: Channel[]): Message[] {

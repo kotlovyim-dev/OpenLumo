@@ -1,4 +1,4 @@
-const bannedWords = [
+export const bannedWords = [
   'delve',
   'tapestry',
   'testament',
@@ -35,7 +35,7 @@ const bannedWords = [
   'dynamic',
 ];
 
-const bannedPhrases = [
+export const bannedPhrases = [
   "In today's fast-paced world",
   'In the ever-evolving landscape of',
   'Are you ready to',
@@ -69,9 +69,22 @@ export const writingRules = [
   'Write short declarative sentences and vary their length. Every sentence must earn the next one. Rewrite or cut any sentence a competitor could post unchanged.',
   'Write headlines, titles, subject lines and slide titles in sentence case, never in Title Case.',
   'Never bait engagement with "comment YES", "like if", "tag a friend", "share this" or "agree?". End with a specific question that invites a multi-word answer, or with a line worth saving or sending.',
-  'Never put a URL in a social post, caption or ad text. Point to the link the way the channel rules say.',
+  'Never put a URL in a social post, caption or ad text. In organic posts, point to the link the way the channel rules say. In ads, the link button is the call to action.',
   `Never use these words, or their equivalents in the copy language: ${bannedWords.join(', ')}. Use landscape, journey and navigate only in their literal sense.`,
   `Never use these phrases: ${bannedPhrases.map((phrase) => `"${phrase}"`).join(', ')}.`,
   'Avoid "not X, but Y" and "it\'s not X, it\'s Y" contrasts, reflex lists of three adjectives or clauses (use two items or four specific ones), more than one em dash per 100 words, trailing commentary such as ", highlighting the importance of", superlatives without proof, generic benefits such as "save time and money", bold pseudo-headings in captions and stacked rhetorical questions.',
   'Use at most 3 emoji in a piece and never as bullet points.',
 ].join('\n');
+
+function wordPattern(word: string): RegExp {
+  const stem = word.endsWith('e') ? word.slice(0, -1) : word;
+  return new RegExp(`\\b${stem.replace(/-/g, '[- ]')}[a-z]*\\b`);
+}
+
+export function findBannedPhrases(text: string): string[] {
+  const normalised = text.replace(/[‘’]/g, "'").toLowerCase();
+  return [
+    ...bannedWords.filter((word) => wordPattern(word).test(normalised)),
+    ...bannedPhrases.filter((phrase) => normalised.includes(phrase.toLowerCase())),
+  ];
+}
