@@ -7,7 +7,8 @@ import { getBoss, getRuntime } from './runtime';
 export type SessionUser = { id: string; name: string; email: string; role: string };
 
 export async function getServerContext() {
-  const session = await getAuth().api.getSession({ headers: await headers() });
+  const requestHeaders = await headers();
+  const session = await getAuth().api.getSession({ headers: requestHeaders });
   if (!session) redirect('/sign-in');
   const { db, config, storage } = getRuntime();
   const { id, name, email, role } = session.user;
@@ -16,6 +17,7 @@ export async function getServerContext() {
 }
 
 export async function redirectIfSignedIn() {
-  const session = await getAuth().api.getSession({ headers: await headers() });
+  const requestHeaders = await headers();
+  const session = await getAuth().api.getSession({ headers: requestHeaders });
   if (session) redirect('/');
 }
