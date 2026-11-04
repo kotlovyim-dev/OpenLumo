@@ -33,6 +33,7 @@ export * from './planner/plan-schema';
 export * from './planner/plan-content';
 export * from './planner/brand-not-ready-error';
 export * from './workspace/request-regeneration';
+export * from './workspace/create-on-demand-items';
 export * from './export/build-export-bundle';
 export * from './time';
 export * from './assets/brand-storage-key';

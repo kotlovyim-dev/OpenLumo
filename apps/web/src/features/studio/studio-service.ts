@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { channelFormats, channelSchema, enqueue, itemFormatSchema, type Queue } from '@openlumo/core';
-import { contentItems, type Database } from '@openlumo/db';
+import { channelFormats, channelSchema, createOnDemandItems, itemFormatSchema, type Queue } from '@openlumo/core';
+import type { Database } from '@openlumo/db';
 import { findBrandAccess } from '../brands/brand-access';
 import { toFieldErrors, type FieldErrors } from '../../lib/field-errors';
 
@@ -38,21 +38,6 @@ export async function generateOnDemand(
   if (!(await findBrandAccess(context.db, context.user.id, brandId, 'editor'))) return { ok: false, error: 'not_found' };
   const parsed = generateSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid_input', fieldErrors: toFieldErrors(parsed.error) };
-  const { channel, format, instruction, variants } = parsed.data;
-
-  const items = await context.db
-    .insert(contentItems)
-    .values(Array.from({ length: variants }, () => ({ brandId, channel, format, status: 'in_review' as const })))
-    .returning({ id: contentItems.id });
-  const itemIds = items.map((item) => item.id);
-  for (const itemId of itemIds) {
-    await enqueue(
-      context.boss,
-      context.db,
-      'item.generate',
-      { brandId, itemId, targetVersion: 1, instruction },
-      { idempotencyKey: `generate:${itemId}:1` },
-    );
-  }
+  const itemIds = await createOnDemandItems(context.db, context.boss, { brandId, ...parsed.data });
   return { ok: true, itemIds };
 }
